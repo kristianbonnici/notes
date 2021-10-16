@@ -21,7 +21,7 @@
 \titleformat{\section} % uline sections
   {\normalfont\Large\bfseries}{\thesection}{1em}{}[{\titlerule[0.8pt]}]
 
-\usepackage{tcolorbox} % for creating gray boxes
+\usepackage{tcolorbox} % for creating boxes
 
 \setcounter{secnumdepth}{5}
 \setcounter{tocdepth}{5}
@@ -1381,7 +1381,7 @@ for each choice of \(s\) and \(a\).
 \section{Dynamic Programming (DP)}\label{dynamic-programming}
 
 
-\textbf{What:} refers to a \uline{collection of algorithms that can be used to \textbf{compute optimal policies} given a perfect model of the environment as a Markov decision process (MDP)}.
+\textbf{What:} refers to a \uline{collection of algorithms that can be used to }\textbf{\uline{compute optimal policies}}\uline{ given a perfect model of the environment as a Markov decision process (MDP)}.
 
 
 Pros and cons:
@@ -1499,7 +1499,7 @@ DP algorithms \textbf{use the \textcolor{blue}{Bellman equations} to define iter
 
 
 
-\subsection{Policy Improvement (Control)}\label{policy-improvement-control}
+\subsection{Policy Improvement}\label{policy-improvement}
 
 \textbf{\textcolor{blue}{Policy improvement theorem:}} tells us that \uline{greedified policy is a strict improvement}, (unless the original policy was already optimal). In other words, it tells us that we can construct a strictly better policy by acting greedily with respect to the value function of a given policy, unless the given policy was already optimal.
 
@@ -1523,10 +1523,10 @@ $$
 
 
 
-\subsection{Policy Iteration}\label{policy-iteration}
+\subsection{Policy Iteration (Control)}\label{policy-iteration}
 
 
-Policy iteration is the process of alternating between \textcolor{blue}{\uline{policy evaluation}} and \textcolor{blue}{\uline{policy improvement (control)}}, which can be illustrated by the following figure:
+Policy iteration is the process of alternating between \textcolor{blue}{\uline{policy evaluation}} and \textcolor{blue}{\uline{policy improvement}}, which can be illustrated by the following figure:
 
 
 \begin{figure}[H]
@@ -1664,6 +1664,18 @@ The process of \uline{using the value estimates of successor states to improve o
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 % =============== CHAPTER 5 - Monte Carlo Methods ===============
 
 
@@ -1690,7 +1702,7 @@ each} \uline{state--action pair}.
 
 \textbf{Pros and cons:}
 \begin{itemize}
-  \item \textbf{+} Don't require a model (direct access to the environment dynamics)
+  \item \textbf{+} Don't require a model (direct access to the environment dynamics) $\rightarrow$ Monte Carlo methods learn directly from interaction.
   \item \textbf{+} Conceptually simple
   \item \textbf{-} Not well suited for step-by-step incremental computation
 \end{itemize}
@@ -1736,14 +1748,894 @@ each} \uline{state--action pair}.
 
 
 
-\subsection{Monte Carlo Prediction}\label{monte-carlo-prediction}
+\subsection{Monte Carlo Policy Evaluation (Prediction)}\label{monte-carlo-prediction}
 
-Monte Carlo methods for learning the state-value function for a given
-policy.
+\textbf{What:} \uline{\textbf{\textcolor{blue}{Monte Carlo methods}} for \textbf{Policy Evaluation}} (estimating value function $v_\pi$ for a specific policy $\pi$).
+
+
+\textbf{Implications of MC learning:}
+
+\begin{itemize}
+  \item \textbf{learns directly from experience} $\rightarrow$ \textcolor{Green}{no need to keep a large model of the environment}.
+  \item can \textbf{estimate the value of an individual state independently of the values of any other states}.
+  \item \textbf{computation needed to update the value of each state} along the way \textcolor{Green}{doesn't depend in any way on the size of the MDP}.
+  \begin{itemize}
+    \item Rather, it \textcolor{Red}{depends on the length of the episode}.
+  \end{itemize}
+\end{itemize}
+
+
 
 The \textbf{first-visit MC method} (focus of this chapter) estimates
 \(v_\pi(s)\) as the average of the returns following first visits to s,
 whereas the \textbf{every-visit MC method} averages the returns
 following all visits to s.
+
+
+
+\begin{tcolorbox}[title={First-visit MC prediction, for estimating $V \approx v_\pi$}]
+
+  \textbf{Input:} a policy $\pi$ to be evaluated
+
+  \textbf{Initialize:}
+  \begin{itemize}
+    \item $V(s) \in \mathbb{R}$, for all $s \in \mathcal{S}$ arbitrarily
+    \item $Returns(s) \leftarrow$ an empty list, for all $s \in \mathcal{S}$
+  \end{itemize}
+
+  \textbf{Loop forever (for each episode):}
+  \begin{description}
+      \item $\;\;\;$ Generate an episode following $\pi$
+      \item $\;\;\;$ $G \leftarrow 0$
+      \item $\;\;\;$ \textbf{Loop for each step of episode, $t=T-1,T-2,...,0$:}
+      \begin{description}
+        \item $\;\;\;$ $G \leftarrow \gamma G + R_{t+1}$
+        \item $\;\;\;$ \textbf{Unless $S_t$ appears in $S_0, S_1, ..., S_{t-1}:$}
+        \begin{description}
+          \item $\;\;\;$ Append $G$ to $Returns(S_t)$
+          \item $\;\;\;$ $V(S_t) \leftarrow average(Returns(S_t))$
+        \end{description}
+      \end{description}
+  \end{description}
+\end{tcolorbox}
+
+\begin{itemize}
+  \item We can repeat the whole process over many episodes (loop forever) and \uline{eventually learn a good estimate for the value function}.
+  \item \textbf{We can avoid keeping all the sampled returns in a list:} We can incrementally update the sample average estimated using the formula:
+  \begin{gather*}
+    Q_{n+1} = Q_n + \frac{1}{n}[R_n - Q_n] \\
+    NewEstimate = OldEstimate + StepSize[Target - OldEstimate]
+  \end{gather*}
+\end{itemize}
+
+
+
+
+
+
+
+
+
+\subsection{Monte Carlo Estimation of Action Values}\label{monte-carlo-estimation-of-action-values}
+
+
+\textbf{What:} Using \uline{\textbf{\textcolor{blue}{Monte Carlo methods}} to learn \textbf{Action-Value functions $q_\pi$}} (instead of state-values).
+
+\begin{itemize}
+  \item Recall that we \textbf{learned state-values by} \uline{averaging sample returns from that state}.
+  \item Similarny we \textbf{learn action-values by} \uline{averaging sample returns from that state, action pair}.
+\end{itemize}
+
+
+\textbf{Why:} Action values are useful for learning a policy. They allow us to \uline{compare different actions in the same state}. Then, we can switch to a better action if one is available.
+
+
+
+
+
+
+
+\subsection{Monte Carlo Control}\label{monte-carlo-control}
+
+\textbf{What:} Using \uline{\textbf{\textcolor{blue}{Monte Carlo methods}} to \textbf{approximate optimal policies}}. Namely Monte Carlo methods to implement a Generalized Policy Iteration (GPI) algorithm (\textcolor{blue}{policy evaluation} and \textcolor{blue}{policy improvement} processes interact).
+
+\textbf{How:}
+
+\begin{itemize}
+  \item For the \textcolor{blue}{policy improvement step}, we can make the policy \uline{greedy with respect to the agent's current action value estimates}.
+  \item For the \textcolor{blue}{policy evaluation step}, we will use a \uline{Monte Carlo method to estimate the action values}.
+  \item For Monte Carlo policy iteration it is natural to \textbf{alternate between} \textcolor{blue}{evaluation} and \textcolor{blue}{improvement} on an \uline{episode-by-episode basis}.
+  \begin{itemize}
+    \item \textbf{After each episode},
+    \begin{enumerate}
+      \item the \textbf{observed returns} are \uline{used for \textcolor{blue}{policy evaluation}}, and
+      \item then the \uline{\textcolor{blue}{policy is improved} at all the states visited in the episode}.
+    \end{enumerate}
+  \end{itemize}
+\end{itemize}
+
+
+\begin{figure}[H]
+  \centering  % Remember to centre the figure
+    \includegraphics[width=0.8\columnwidth]{images/monte-carlo-policy-iteration.png}
+    \caption{Process of Monte Carlo General Policy Iteration.}
+    \label{fig:monte-carlo-policy-iteration}
+\end{figure}
+
+ A complete simple algorithm along these lines, which we call Monte Carlo ES, for Monte Carlo with Exploring Starts, is given in pseudocode below.
+
+
+
+\begin{tcolorbox}[title={Monte Carlo ES (Exploring Starts), for estimating $\pi \approx \pi_*$}]
+
+\textbf{Initialize:}
+\begin{itemize}
+ \item $\pi(s) \in \mathcal{A}(s)$, for all $s \in \mathcal{S}$ arbitrarily
+ \item $Q(s,a) \in \mathbb{R}$ for all $s \in \mathcal{S}, a \in \mathcal{A}(s)$ arbitrarily
+\end{itemize}
+
+\textbf{Loop forever (for each episode):}
+\begin{description}
+   \item $\;\;\;$ Choose $S_0 \in \mathcal{S}, A_0 \in \mathcal{A}(\mathcal{S}_0)$ randomly such that all pairs have probability $> 0$
+   \item $\;\;\;$ Generate an episode from $S_0$, $A_0$, following $\pi$
+   \item $\;\;\;$ $G \leftarrow 0$
+   \item $\;\;\;$ \textbf{Loop for each step of episode, $t=T-1,T-2,...,0$:}
+   \begin{description}
+     \item $\;\;\;$ $G \leftarrow \gamma G + R_{t+1}$
+     \item $\;\;\;$ \textbf{Unless $S_t, A_t$ appears in $S_0, A_0, S_1, A_1, ..., S_{t-1}, A_{t-1}:$}
+     \begin{description}
+       \item $\;\;\;$ Append $G$ to $Returns(S_t, A_t)$
+       \item $\;\;\;$ $Q(S_t, A_t) \leftarrow average(Returns(S_t, A_t))$
+       \item $\;\;\;$ $\pi(S_t) \leftarrow \argmax_a Q(S_t, a)$
+     \end{description}
+   \end{description}
+\end{description}
+\end{tcolorbox}
+
+\begin{itemize}
+  \item \textbf{Exploring start:} For policy evaluation to work for action values, we must \uline{assure continual exploration}. One way to do this is by specifying that the \uline{episodes start in a state–action pair, and that every pair has a nonzero probability of being selected as the start}. This guarantees that all state–action pairs will be visited an infinite number of times in the limit of an infinite number of episodes.
+\end{itemize}
+
+
+
+
+
+
+
+
+\subsection{Monte Carlo Control without Exploring Starts}\label{monte-carlo-control-without-exploring-starts}
+
+\textbf{What:} Alternative ways (to Exploring Starts) for performing exploration. Here we use $\epsilon$-Soft policies.
+
+\textbf{Why:} It can be difficult to randomly sample an initial State action pair.
+
+\begin{itemize}
+  \item e.g. For example, how would you randomly sample the initial State action pair for a self-driving car? How could we ensure the agent can start in all possible States? We would need to put the car in many different configurations in the middle of a busy freeway. This would be dangerous and impractical.
+\end{itemize}
+
+
+
+\textbf{\textcolor{blue}{$\epsilon$-Soft policies}:} take each action with probability at least Epsilon over the number of actions ($\epsilon/|\mathcal{A}|$).
+
+\begin{figure}[H]
+  \centering  % Remember to centre the figure
+    \includegraphics[width=1.0\columnwidth]{images/epsilon-soft-policies.png}
+    \caption{$\epsilon$-greedy policies are a subset of $\epsilon$-soft policies}
+    \label{fig:monte-carlo-policy-iteration}
+\end{figure}
+
+However, if our policy always gives at least Epsilon probability to each action, it's \textcolor{Red}{impossible to converge to a deterministic optimal policy}
+$$
+\pi_* > Optimal\;\epsilon–soft
+$$
+
+
+We will later discuss how \textcolor{Green}{we can learn the optimal policy using a different method called \textbf{Q-learning}}.
+
+
+\begin{tcolorbox}[title={On-policy first-visit MC control (for $\epsilon$-soft policies), estimates $\pi \approx \pi_*$}]
+
+\textbf{Algorithm parameter:} small $\epsilon$ > 0
+
+\textbf{Initialize:}
+\begin{itemize}
+ \item $\pi(s) \leftarrow$ an arbitrary $\epsilon$-soft policy
+ \item $Q(s,a) \in \mathbb{R}$ for all $s \in \mathcal{S}, a \in \mathcal{A}(s)$ arbitrarily
+ \item $Returns(s,a) \leftarrow$ an empty list, for all $s \in \mathcal{S}, a \in \mathcal{A}(s)$
+\end{itemize}
+
+\textbf{Repeat forever (for each episode):}
+\begin{description}
+   \item $\;\;\;$ Generate an episode from $S_0$, $A_0$, following $\pi$:
+   \item $\;\;\;$ $G \leftarrow 0$
+   \item $\;\;\;$ \textbf{Loop for each step of episode, $t=T-1,T-2,...,0$:}
+   \begin{description}
+     \item $\;\;\;$ $G \leftarrow \gamma G + R_{t+1}$
+     \item $\;\;\;$ \textbf{Unless $S_t, A_t$ appears in $S_0, A_0, S_1, A_1, ..., S_{t-1}, A_{t-1}:$}
+     \begin{description}
+       \item $\;\;\;$ Append $G$ to $Returns(S_t, A_t)$
+       \item $\;\;\;$ $Q(S_t, A_t) \leftarrow average(Returns(S_t, A_t))$
+       \item $\;\;\;$ $A^* \leftarrow \argmax_a Q(S_t,a)$     (with ties broken arbitrarily)
+       \item $\;\;\;$ For all $a \in \mathcal{A}(S_t)$
+       $$
+       \pi(a|S_t)=
+        \begin{cases}
+           1-\epsilon + \epsilon / |\mathcal{A}(S_t)| & \text{if } a = A^* \\
+          \epsilon / |\mathcal{A}(S_t)| & \text{if } a \neq A^*
+        \end{cases}
+       $$
+     \end{description}
+   \end{description}
+\end{description}
+\end{tcolorbox}
+
+
+
+
+
+
+\subsection{Off-policy Prediction via Importance Sampling}\label{off-policy-prediction-via-importance-sampling}
+
+\textbf{What:} Importance sampling allowing us to do Off-Policy learning. More precisely, we use the important sampling ratios to correct the returns generated by a behavior policy and we modified the on-policy Monte Carlo prediction algorithm for off-policy learning.
+
+\textbf{Why:} Off-Policy learning allows us to learn optimal policy from suboptimal behaviour. This way we can \textcolor{Green}{learn an optimal policy but still maintain exploration}.
+
+\textbf{On-Policy vs. Off-Policy:}
+\begin{itemize}
+  \item \textbf{\textcolor{Blue}{On-Policy}:} \textcolor{blue}{improve} and \textcolor{blue}{evaluate} the \uline{policy being used to select actions}.
+  \item \textbf{\textcolor{Blue}{Off-Policy}:} \textcolor{blue}{improve} and \textcolor{blue}{evaluate} a \uline{different policy (\textcolor{Blue}{behavio policy $b(s|a)$}) from the one used to select actions (\textcolor{Blue}{target policy $\pi(s|a)$})}.
+  \begin{itemize}
+    \item \textcolor{Blue}{behavio policy $b(s|a)$} is generally an \uline{exploratory policy}
+    \item One key rule of off policy learning is that the behavior policy must cover the target policy
+    $$
+    \text{If } \pi(a|s) > 0 \text{ then also } b(a|s) > 0
+    $$
+  \end{itemize}
+  \item Learning \textcolor{Blue}{on-policy} or \textcolor{Blue}{off-policy} \textcolor{Orange}{may perform differently in control depending on the task}.
+\end{itemize}
+
+
+\textbf{Importance Sampling:} A way of \uline{estimating the expected value of a distribution using samples from a different distribution}.
+\begin{itemize}
+  \item Derivation of Importance Sampling – Consider:
+  \begin{itemize}
+    \item Random variable $x$ is being sampled from a probability distribution $b$
+    $$
+    \text{Sample: } x \sim b
+    $$
+    \item We want to estimate the expected value of $x$, but with respect to the target distribution $\pi$.
+    $$
+    \text{Estimate: } \mathbb{E}_\pi[X]
+    $$
+
+    \item \textcolor{Red}{Because $x$ is drawn from $b$, we cannot simply use the sample average to compute the expectation under $\pi$.}
+
+    \item We can use importance sampling to correct the expectation:
+      \begin{align*}
+      \mathbb{E}_\pi[X] &=
+      \sum_{x \in X} x \frac{\pi(x)}{b(x)} b(x) \\
+      &= \sum_{x \in X} x \underbrace{\rho(x)}_\text{importance sampling ratio}b(x) \\
+      &= \mathbb{E}_b [X\rho(x)] \\
+      \end{align*}
+    \item We can then use importance sampling to \textbf{estimate the expectation from data:} We just need to compute a \uline{weighted sample average with the importance sampling ratio as the weightings}:
+      \begin{align*}
+      \mathbb{E}_b [X\rho(x)] &=
+      \sum_{x \in X} x \rho(x) b(x) \\
+      &\approx \frac{1}{n} \sum_{i=1}^n x_i \rho(x_i)
+      \end{align*}
+    \item \textcolor{Green}{We can now estimate the expected value of $x$ under distribution $\pi$ by using the sample average, the samples drawn from distribution $b$.}
+
+    \begin{figure}[H]
+      \centering  % Remember to centre the figure
+        \includegraphics[width=0.7\columnwidth]{images/importance-sampling-eg.png}
+        \caption{Example importance sampling (samples 1, 3 \& 1)}
+        \label{fig:importance-sampling-eg}
+    \end{figure}
+    \begin{itemize}
+      \item With samples just from $b$, we managed to get a pretty good estimate of the expectation under $\pi$.
+    \end{itemize}
+  \end{itemize}
+\end{itemize}
+
+
+\textbf{Off-policy Prediction via Importance Sampling:}
+\begin{itemize}
+  \item The expectation of the return under $\pi$, sampling from $b$:
+  \begin{gather*}
+  V_\pi(s) = \mathbb{E}_b [\rho G_t | S_t = s] \\ \\
+  \textbf{Where:} \\
+  \text{Rho: } \rho = \frac{\mathbb{P}(\text{trajectory under $\pi$})}{\mathbb{P}(\text{trajectory under $b$})} \\
+  = \prod_{k=t}^{T-1} \frac{\pi(A_k | S_k)}{b(A_k | S_k)} \\ \\
+  \textbf{Where:} \\
+  \mathbb{P}(\text{trajectory under $b$}) = \prod_{k=t}^{T-1} b(A_k | S_k) p(S_{k+1} | S_k, A_k) \\
+  \mathbb{P}(\text{trajectory under $\pi$}) = \prod_{k=t}^{T-1} \pi(A_k | S_k) p(S_{k+1} | S_k, A_k) \\
+\end{gather*}
+\end{itemize}
+
+
+
+
+\textbf{Incremental Implementation:}
+
+Monte Carlo prediction methods can be implemented incrementally, on an episode-by-episode basis, using average returns.
+
+
+\begin{tcolorbox}[title={Off-policy MC prediction (policy evaluation) for estimating $Q \approx q_\pi$}]
+
+
+\textbf{Input:} an arbitrary target policy $\pi$
+
+\textbf{Initialize, for all $s \in \mathcal{S}, a \in \mathcal{A}(s)$:}
+\begin{itemize}
+ \item $Q(s,a) \in \mathbb{R}$ (arbitrarily)
+ \item $C(s,a) \leftarrow 0$
+\end{itemize}
+
+\textbf{Loop forever (for each episode):}
+\begin{description}
+   \item $\;\;\;$ $b$ any policy with coverage of $\pi$
+   \item $\;\;\;$ Generate an episode following $b$
+   \item $\;\;\;$ $G \leftarrow 0$
+   \item $\;\;\;$ $W \leftarrow 1$
+   \item $\;\;\;$ \textbf{Loop for each step of episode, $t=T-1,T-2,...,0$, while $W \neq 0$:}
+   \begin{description}
+     \item $\;\;\;$ $G \leftarrow \gamma G + R_{t+1}$
+     \item $\;\;\;$ $C(S_t,A_t) \leftarrow C(S_t,A_t) + W$
+     \item $\;\;\;$ $Q(S_t,A_t) \leftarrow Q(S_t,A_t) + \frac{W}{C(S_t,A_t)} [G - Q(S_t,A_t)]$
+     \item $\;\;\;$ $W \leftarrow W\frac{\pi(A_k | S_k)}{b(A_k | S_k)}$
+   \end{description}
+\end{description}
+\end{tcolorbox}
+
+\begin{itemize}
+  \item $W:$ accumulated product of important sampling ratios on each time step of the episode.
+  \item We compute Rho $\rho$ from $t$ to $T-1$ incrementally ($W = \rho_{t:T-1}$).
+  $$
+  W_{t+1} \leftarrow W_t \rho_t
+  $$
+  \begin{itemize}
+    \item We can compute this recursively without having to store all past values of Rho.
+  \end{itemize}
+\end{itemize}
+
+
+
+
+
+
+
+
+
+
+
+
+
+\subsection{Off-policy Monte Carlo Control}\label{off-policy-monte-carlo-control}
+
+
+\begin{tcolorbox}[title={Off-policy MC control for estimating $\pi \approx \pi_*$}]
+
+\textbf{Initialize, for all $s \in \mathcal{S}, a \in \mathcal{A}(s)$:}
+\begin{itemize}
+ \item $Q(s,a) \in \mathbb{R}$ (arbitrarily)
+ \item $C(s,a) \leftarrow 0$
+ \item $\pi(s) \leftarrow \argmax_a Q(s,a)$ (with ties broken consistently)
+\end{itemize}
+
+\textbf{Loop forever (for each episode):}
+\begin{description}
+   \item $\;\;\;$ $b$ any soft policy
+   \item $\;\;\;$ Generate an episode using $b$
+   \item $\;\;\;$ $G \leftarrow 0$
+   \item $\;\;\;$ $W \leftarrow 1$
+   \item $\;\;\;$ \textbf{Loop for each step of episode, $t=T-1,T-2,...,0$:}
+   \begin{description}
+     \item $\;\;\;$ $G \leftarrow \gamma G + R_{t+1}$
+     \item $\;\;\;$ $C(S_t,A_t) \leftarrow C(S_t,A_t) + W$
+     \item $\;\;\;$ $Q(S_t,A_t) \leftarrow Q(S_t,A_t) + \frac{W}{C(S_t,A_t)} [G - Q(S_t,A_t)]$
+     \item $\;\;\;$ $\pi(S_t) \leftarrow \argmax_a Q(S_t,a)$ (with ties broken consistently)
+     \item $\;\;\;$ If $A_t \neq \pi(S_t)$ then exit inner Loop (proceed to next episode)
+     \item $\;\;\;$ $W \leftarrow W\frac{1}{b(A_t | S_t)}$
+   \end{description}
+\end{description}
+\end{tcolorbox}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+% =============== CHAPTER 6 - Temporal-Difference Learning ===============
+
+
+
+\section{Temporal-Difference (TD) Learning}\label{temporal-difference-learning}
+
+
+\begin{tcolorbox}[colback=green!5,colframe=green!75!black]
+  One of the most fundamental concepts in reinforcement learning!
+\end{tcolorbox}
+
+
+\textbf{What:} class of \uline{model-free} reinforcement learning methods which learn by \uline{bootstrapping} from the current estimate of the value function. These methods are a \uline{combination of \textcolor{blue}{Monte Carlo (MC)} ideas and \textcolor{blue}{dynamic programming (DP)} ideas}.
+
+\textbf{How:}
+\begin{itemize}
+  \item Like \textcolor{blue}{MC}, TD methods can \uline{learn directly from raw experience without a model of the environment’s dynamics}.
+  \item Like \textcolor{blue}{DP}, TD methods \uline{update estimates based in part on other learned estimates, without waiting for a final outcome (they bootstrap)}.
+\end{itemize}
+
+For the control problem (finding an optimal policy), DP, TD, and MC methods \uline{all use some variation of \textbf{generalized policy iteration (GPI)}}. The differences in the methods are primarily differences in their approaches to the prediction problem.
+
+
+
+
+
+
+
+
+
+
+\subsection{TD Prediction}\label{td-prediction}
+
+\textbf{TD vs. MC}
+\begin{itemize}
+  \item \textbf{Both} \uline{use experience to solve the prediction problem}.
+  \item \textbf{\textcolor{blue}{MC methods}} \uline{wait until the end of the episode to determine the increment to $V(S_t)$} (only then is $G_t$ known).
+  \item \textbf{\textcolor{blue}{TD methods}} \uline{wait only until the next time step}. At time $t + 1$ they immediately form a target and make a useful update using the observed reward $R_{t+1}$ and the estimate $V (S_{t+1})$.
+\end{itemize}
+
+
+\textbf{We can use these recursive formula to incrementally update our estimated value:}
+
+First recall:
+\begin{itemize}
+  \item \textbf{$G_t$ (recursively):}
+  $$
+  G_t \dot{=} R_{t+1} + \gamma G_{t+1}
+  $$
+  \item \textbf{$v_\pi(s)$ (recursively):}
+    \begin{align*}
+    v_\pi(s) &= \mathbb{E}_\pi[R_{t+1} + \gamma G_{t+1}|S_t=s] \\
+    &= R_{t+1} + \gamma v_\pi(S_{t+1})
+    \end{align*}
+\end{itemize}
+
+Incremental Monte Carlo update rule (Monte Carlo estimate without saving lists of returns):
+$$V(S_t) \leftarrow V(S_t) + \alpha [G_t - V(S_t)]$$
+\begin{itemize}
+  \item We can replace $G_t$ with the \uline{reward + the estimate of the return in the next state} (so we \textcolor{Green}{don't have to wait until the end of the episode}, but we still have to wait to the next step):
+  $$V(S_t) \leftarrow V(S_t) + \alpha \underbrace{[\underbrace{R_{t+1} + \gamma V(S_{t+1})}_\text{t target} - V(S_t)]}_\text{TD-error $\delta_t$}$$
+  \item TD updates the value of one state towards its own estimate of the value in the next state. As the estimated value for the next state improves, so does our target.
+  \begin{itemize}
+    \item \textcolor{Orange}{In fact, we've done something like this before in dynamic programming. In DP, we update $V(S_t)$ toward the value of all possible next states. The primary difference is in DP, we use an expectation over all possible next states. We needed a model of the environment to compute this expectation, in TD we only need the next state. We can get that directly from the environment without a model.}
+  \end{itemize}
+
+  We can get the next state directly from the environment without a model, \textbf{1-Step TD}:
+  \begin{itemize}
+    \item Think of time $t+1$ as the current time step and time $t$ as the previous time step.
+    \item Simply store the state from the previous time step in order to make our TD updates: $s_t \leftarrow s_{t+1}$
+    \item Only then can we update the value of the previous state.
+    \begin{figure}[H]
+      \centering  % Remember to centre the figure
+        \includegraphics[width=0.7\columnwidth]{images/1-step-td.png}
+        \caption{Illustration of 1-Step TD, TD(0)}
+        \label{fig:1-step-td}
+    \end{figure}
+  \end{itemize}
+\end{itemize}
+
+\textbf{TD(0) a.k.a 1-Step TD}
+
+So the simplest TD method (TD(0)) makes the update
+$$V(S_t) \leftarrow V(S_t) + \alpha \underbrace{[\underbrace{R_{t+1} + \gamma V(S_{t+1})}_\text{t target} - V(S_t)]}_\text{TD-error $\delta_t$}$$
+immediately on transition to $S_{t+1}$ and receiving $R_{t+1}$.
+
+It is a special case of the $TD(\lambda)$ and $n$-step TD methods.
+
+The below pseudocode specifies TD(0) completely in procedural form.
+
+
+
+\begin{tcolorbox}[title={Tabular TD(0) for estimating $v_\pi$}]
+
+\textbf{Input:} the policy $\pi$ to be evaluated
+
+\textbf{Algorithm parameter:} step size $\alpha \in (0,1])$
+
+\textbf{Initialize:} $V(s)$ for all $s \in \mathcal{S}^+$ arbitrarily except that $V (terminal) = 0$ \\
+
+\textbf{Loop for each episode:}
+\begin{description}
+   \item $\;\;\;$ Initialize $S$
+   \item $\;\;\;$ \textbf{Loop for each step of episode:}
+   \begin{description}
+     \item $\;\;\;$ $A \leftarrow$ action given by $\pi$ for $S$
+     \item $\;\;\;$ Take action $A$ observe $R, S'$
+     \item $\;\;\;$ $V(S) \leftarrow V(S) + \alpha [R + \gamma V(S') - V(S)]$
+     \item $\;\;\;$ $S \leftarrow S'$
+   \end{description}
+   \item $\;\;\;$ \textbf{until $S$ is terminal}
+\end{description}
+\end{tcolorbox}
+
+
+
+
+
+
+\subsection{Rich Sutton: The Importance of TD Learning}\label{the-importance-of-td-learning}
+
+
+\textbf{\textcolor{blue}{Learning to predict (Prediction Learning}) is the single most scalable kind of learning.}
+
+\begin{itemize}
+  \item It is the \uline{unsupervised supervised learning}.
+  \begin{itemize}
+    \item We have a target (just by waiting)
+    \item Yet no human labeling is needed!
+  \end{itemize}
+  \item Prediction learning is \uline{\textbf{scalable} model-free learning}.
+\end{itemize}
+
+
+\textbf{\textcolor{blue}{TD learning} is a method for \textcolor{blue}{learning to predict} from another, later, learned prediction.}
+
+\begin{itemize}
+  \item i.e. \textit{learnig a guess from guess}
+  \item The TD error is the difference between the two predictions, the \textit{temporal difference}
+  \item Otherwise TD learning is the same as supervised-learning, backpropagating the error
+\end{itemize}
+
+
+\textbf{\textcolor{blue}{TD learning} benefits and insights.}
+
+\begin{itemize}
+  \item Relevant only on \uline{\textit{multi-step} prediction problems} (everything other than the classical supervised learning setup)
+  \begin{itemize}
+    \item with information about it possibly revealed on each step
+  \end{itemize}
+  \item It is learning specialized for general, multi-step prediction, which may be key to perception, meaning, and modeling of the world
+  \item It takes advantage of the \textbf{state property}
+  \begin{itemize}
+    \item which makes it \uline{fast, data efficient}
+    \item which also makes it \uline{asymptotically biased}
+  \end{itemize}
+  \item It is \uline{computationally congenial}
+  \item \textbf{Widely used in RL} to predict future rewards (value functions)
+  \item \textbf{Key to} $Q$-learning, Sarsa, TD($\lambda$), Deep Q networks, TD-Gammon actor-critic methods, Samuel's checker player
+  \begin{itemize}
+    \item but not AlphaGo, helicopter autopilots, pure policy-based methods
+  \end{itemize}
+  \item Appears to be how brain reward systems work
+  \item Can be used to predict any signal, not just rewards
+\end{itemize}
+
+
+
+
+
+
+
+
+
+
+
+\subsection{Advantages of TD Prediction Methods}\label{advantages-of-td-prediction-methods}
+
+
+\begin{itemize}
+  \item Unlike dynamic programming, TD methods \uline{do not require a model of the environment}.
+  \item Unlike Monte Carlo, TD methods can \uline{learn online} (update the values on every step) without waiting to know the final outcome. Bootstrapping allows us to update the estimates based on other estimates.
+  \item \uline{Converge faster than MC methods}.
+\end{itemize}
+
+
+
+
+
+
+
+\subsection{Optimality of TD(0)}\label{optimality-of-td(0)}
+
+Under batch updating, TD(0) converges deterministically to a single answer independent of the step-size parameter, $\alpha$, as long as $\alpha$ is chosen to be sufficiently small.
+
+The constant-$\alpha$ MC method also converges deterministically under the same conditions, but to a different answer.
+\begin{itemize}
+  \item Under batch training, constant-$\alpha$ MC converges to values, V(s), that are sample averages of the actual returns experienced after visiting each state s.
+\end{itemize}
+
+These are optimal estimates in the sense that they minimize the mean-squared error from the actual returns in the training set. In this sense it is surprising that the batch TD method was able to perform better according to the root mean-squared error measure shown in Figure \ref{fig:batch-training-td-vs-mc} below.
+
+\begin{figure}[H]
+  \centering
+    \includegraphics[width=0.6\columnwidth]{images/batch-training-td-vs-mc.png}
+    \caption{Performance of TD(0) and constant-$\alpha$ MC under batch training on the random walk task}
+    \label{fig:batch-training-td-vs-mc}
+\end{figure}
+
+The answer is that the Monte Carlo method is optimal only in a limited way, and
+that \uline{TD is optimal in a way that is more relevant to predicting returns}.
+
+On tasks with large state spaces, TD methods may be the only feasible way of approximating the certainty-equivalence solution.
+
+
+
+
+
+
+
+
+
+
+\subsection{Sarsa: On-policy TD Control}\label{sarsa}
+
+\textbf{What:} algorithm that perfrms on-policy TD control by learning an action-value function $q_\pi$.
+
+The \textbf{\textcolor{blue}{SARSA}} acronym describes the data used in the updates:
+\begin{itemize}
+  \item \textbf{\textcolor{blue}{S}}tate, \textbf{\textcolor{blue}{A}}ction, \textbf{\textcolor{blue}{R}}eward, next \textbf{\textcolor{blue}{S}}tate, next \textbf{\textcolor{blue}{A}}ction.
+  \item $S_t \;, \;\;\; A_t \;, \;\;\; R_{t+1} \;, \;\;\; S_{t+1} \;, \;\;\; A_{t+1}$
+\end{itemize}
+
+
+\textbf{\textcolor{blue}{Sarsa algorithm:}}
+
+$$
+Q(S_t, A_t) \leftarrow Q(S_t, A_t) + \alpha (R_{t+1} + \gamma Q(S_{t+1}, A_{t+1}) - Q(S_t, A_t))
+$$
+
+The general form of the Sarsa control algorithm is given in the box below.
+
+\begin{tcolorbox}[title={Sarsa (on-policy TD control) for estimating $Q \approx q_*$}]
+
+\textbf{Algorithm parameters:} $\alpha \in (0,1])$ \& small $\epsilon > 0$
+
+\textbf{Initialize:} $Q(s, a)$ for all $s \in \mathcal{S}^+, a \in \mathcal{A}(s)$ arbitrarily except that $Q(terminal, \cdot) = 0$ \\
+
+\textbf{Loop for each episode:}
+\begin{description}
+   \item $\;\;\;$ Initialize $S$
+   \item $\;\;\;$ Choose $A$ from $S$ using policy derived from $Q$ (e.g. $\epsilon$-greedy)
+   \item $\;\;\;$ \textbf{Loop for each step of episode:}
+   \begin{description}
+     \item $\;\;\;$ Take action $A$ observe $R, S'$
+     \item $\;\;\;$ Choose $A'$ from $S'$ using policy derived from $Q$ (e.g. $\epsilon$-greedy)
+     \item $\;\;\;$ $Q(S, A) \leftarrow Q(S, A) + \alpha [R + \gamma Q(S', A') - Q(S, A)]$
+     \item $\;\;\;$ $S \leftarrow S'; A \leftarrow A'$
+   \end{description}
+   \item $\;\;\;$ \textbf{until $S$ is terminal}
+\end{description}
+\end{tcolorbox}
+
+In Sarsa, the agent needs to know its next state action pair before updating its value estimates. That means it \uline{has to commit to its next action before the update}.
+
+\textcolor{Green}{Sarsa converges with probability 1 to an optimal policy} and action-value function \textbf{as long as} \uline{all state-action pairs are visited an infinite number of times} and the \uline{policy converges in the limit to the greedy policy} (which can be arranged, for example, with "$\epsilon$-greedy policies by setting " = 1/t).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\subsection{Q-learning: Off-policy TD Control}\label{q-learning}
+
+\textbf{What:} algorithm that perfrms off-policy TD control by learning an action-value function $q_\pi$.
+
+\textbf{\textcolor{blue}{Q-learning algorithm:}}
+
+$$
+Q(S_t, A_t) \leftarrow Q(S_t, A_t) + \alpha (R_{t+1} + \gamma \max_a Q(S_{t+1}, a) - Q(S_t, A_t))
+$$
+
+
+\textcolor{blue}{\textbf{Sarsa}} vs. \textcolor{blue}{\textbf{Q-learning}}:
+
+\begin{itemize}
+  \item \textcolor{blue}{\textbf{Sarsa}} is a \uline{sample-based version of \textcolor{blue}{policy iteration} which uses \textcolor{blue}{Bellman equation} for action values, that each depend on a fixed policy}.
+  \item \textcolor{blue}{\textbf{Q-learning}} is a \uline{sample-based version of \textcolor{blue}{value iteration} which iteratively applies the \textcolor{blue}{Bellman's Optimality Equation}}.
+  \begin{figure}[H]
+    \centering
+      \includegraphics[width=0.8\columnwidth]{images/bellman-equation-sarsa-qlearning.png}
+      \label{fig:bellman-equation-sarsa-qlearning}
+  \end{figure}
+  \item The optimality equations enable \textcolor{blue}{\textbf{Q-learning}} to \textcolor{Green}{directly learn Q-star instead of switching between policy improvement and policy evaluation steps}.
+\end{itemize}
+
+
+\begin{tcolorbox}[title={Q-learning (off-policy TD control) for estimating $\pi \approx \pi_*$}]
+
+\textbf{Algorithm parameters:} step size $\alpha \in (0,1])$ \& small $\epsilon > 0$
+
+\textbf{Initialize:} $Q(s, a)$ for all $s \in \mathcal{S}^+, a \in \mathcal{A}(s)$ arbitrarily except that $Q(terminal, \cdot) = 0$ \\
+
+\textbf{Loop for each episode:}
+\begin{description}
+   \item $\;\;\;$ Initialize $S$
+   \item $\;\;\;$ \textbf{Loop for each step of episode:}
+   \begin{description}
+     \item $\;\;\;$ Choose $A$ from $S$ using policy derived from $Q$ (e.g. $\epsilon$-greedy)
+     \item $\;\;\;$ Take action $A$ observe $R, S'$
+     \item $\;\;\;$ $Q(S, A) \leftarrow Q(S, A) + \alpha [R + \gamma \max_a Q(S', a) - Q(S, A)]$
+     \item $\;\;\;$ $S \leftarrow S'$
+   \end{description}
+   \item $\;\;\;$ \textbf{until $S$ is terminal}
+\end{description}
+\end{tcolorbox}
+
+
+\bigskip
+
+\textbf{How is Q-learning off-policy?}
+\begin{itemize}
+  \item Since Q-learning \uline{learns about the best action it could possibly take rather than the actions it actually takes}, it is learning off-policy.
+  \item \textbf{Why no important sampling ratios (with 1-step)?} Because the agent is estimating action values with unknown policy. It does not need important sampling ratios to correct for the difference in action selection. The action value function represents the returns following each action in a given state. The agents target policy represents the probability of taking each action in a given state. Putting these two elements together, the agent can calculate the expected return under its target policy from any given state, in particular, the next state, $S_{t+1}$.
+
+\end{itemize}
+
+\textcolor{Green}{Q-learning also converges to the optimal value function} as long as the aging continues to explore and samples all areas of the state action space.
+
+
+
+
+
+
+
+
+
+
+
+\subsection{Expected Sarsa}\label{expected-sarsa}
+
+The algorithm is nearly identical to Sarsa, except the TD error uses the expected estimate of the next action value instead of a sample of the next action value.
+\begin{itemize}
+  \item Sarsa:
+  $$
+  Q(S_t, A_t) \leftarrow Q(S_t, A_t) + \alpha (R_{t+1} + \gamma \textcolor{purple}{Q(S_{t+1}, A_{t+1})} - Q(S_t, A_t))
+  $$
+  \item Expected Sarsa:
+  \begin{align*}
+    Q(S_t, A_t) &\leftarrow Q(S_t, A_t) + \alpha (R_{t+1} + \gamma \textcolor{purple}{\mathbb{E}_\pi [Q(S_{t+1}, A_{t+1}) | S_{t+1}]} - Q(S_t, A_t)) \\
+    &\leftarrow Q(S_t, A_t) + \alpha (R_{t+1} + \gamma \textcolor{purple}{\sum_{a'} \pi(a' | S_{t+1}) Q(S_{t+1}, a')} - Q(S_t, A_t))
+  \end{align*}
+\end{itemize}
+
+
+\textbf{Motivation:} Sarsa estimates this expectation by sampling the next date from the environment and the next action from its policy. But the agent already knows this policy, so why should it have to sample its next action? Instead, it should just compute the expectation directly.
+
+\textbf{Expected Sarsa vs. Sarsa (Pross \& Cons)}
+\begin{itemize}
+  \item There's a huge upside to calculating the expectation explicitly: Expected Sarsa has a \textcolor{Green}{more stable update target} than Sarsa.
+  \item The lower variance comes with a downside though. Computing the average over next actions becomes \textcolor{red}{more expensive as the number of actions increases}. When there are many actions, computing the average might take a long time, especially since the average has to be computed every time step.
+  \item Expected Sarsa is \textcolor{Green}{more robust} than Sarsa \textcolor{Green}{to large step sizes}.
+\end{itemize}
+
+Expected Sarsa can do off-policy learning without using importance sampling.
+
+Expected Sarsa with greedy target policy $\equiv (equivalent\;to)$ Q-Learning
+\begin{itemize}
+  \item[$\rightarrow$] Q-Learning is a special case of Expected Sarsa.
+  \item Expected Sarsa can also do off-policy learning without using importance sampling.
+\end{itemize}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\section{$n$-step Bootstrapping}
+
+\begin{tcolorbox}[colback=yellow!5,colframe=yellow!75!black,title=NOTE]
+  \textbf{Idea of $n$-step methods} is \textcolor{Orange}{usually used as an \uline{introduction to the algorithmic idea of \textit{eligibility traces} (Chapter 12)}}, which enable bootstrapping over multiple time intervals simultaneously. \textbf{Here} we instead consider the n-step bootstrapping idea on its own.
+\end{tcolorbox}
+
+
+\textbf{What:} methods that \uline{unifies \textcolor{blue}{MC} \& \textcolor{blue}{TD(0)} methods} so that one can shift from one to the other smoothly as needed to meet the demands of a particular task.
+
+\textbf{Motivation:} Neither \textcolor{blue}{MC} methods nor \textcolor{blue}{one-step TD} methods are always the best. The \textcolor{Green}{best methods are often intermediate between the two extremes}.
+
+\begin{figure}[H]
+  \centering
+    \includegraphics[width=0.9\columnwidth]{images/n-step-methods.png}
+    \caption{These $n$-step methods form a spectrum ranging from one-step TD methods to Monte Carlo methods.}
+    \label{fig:n-step-methods}
+\end{figure}
+
+
+\textbf{How they work:}
+\begin{itemize}
+  \item $n$-step TD will perform an update based on the next $n$ rewards, and the estimated value of the corresponding state ($n$ steps ahead).
+\end{itemize}
+
+\textbf{Returns of the method on the spectrum:}
+\begin{itemize}
+  \item \textbf{Monte Carlo} updates the estimate of $v_\pi(S_t)$ is updated in the direction of the \uline{complete return}:
+  \begin{gather*}
+    G_{t} \doteq R_{t+1} + \gamma R_{t+2} + \gamma^2 R_{t+3} + ... + \gamma^{T-t-1} R_{T} \\ \\
+    \textbf{Where:} \\
+    T\text{: is the last time step of the episode} \\
+  \end{gather*}
+  \begin{itemize}
+    \item Let us call this quantity the \textit{target} of the update.
+  \end{itemize}
+  \item All \textbf{$n$-step returns} can be considered \uline{approximations to the full return}, truncated after n steps and then corrected for the remaining missing terms by $V_{t+n-1}(S_{t+n})$.
+  \begin{itemize}
+    \item Return in 1-step TD method:
+    $$
+    G_{t:t+1} \doteq R_{t+1} + \gamma V_{t}(S_{t+1})
+    $$
+    \item Return in 2-step TD method:
+    $$
+    G_{t:t+2} \doteq R_{t+1} + \gamma R_{t+2} + \gamma^2 V_{t+1}(S_{t+2})
+    $$
+    \item Return in $n$-step TD method:
+    $$
+    G_{t:t+n} \doteq R_{t+1} + \gamma R_{t+2} + ... + \gamma^{n-1} R_{t+n} + \gamma^{n} V_{t+n-1}(S_{t+n})
+    $$
+    \item If $t+n \leq T$ (if the $n$-step return extends to or beyond termination), then all the missing terms are taken as zero, and the $n$-step return defined to be equal to the ordinary full return ($G_{t:t+n} \doteq G_t \text{ if } t+n \geq T$).
+  \end{itemize}
+\end{itemize}
+
+
+\textbf{$n$-step TD Algorithm:}
+\begin{itemize}
+  \item No real algorithm can use the $n$-step return until after it has seen $R_{t+n}$ and computed $V_{t+n-1}$. The first time these are available is $t+n$. The natural state-value learning algorithm for using $n$-step returns is thus
+  $$
+  V_{t+n}(S_t) \doteq V_{t+n-1}(S_t) + \alpha (G_{t:t+n} - V_{t+n-1}(S_t)), \;\;\;\; 0 \leq t < T,
+  $$
+  \item while the values of all other states remain unchanged: $V_{t+n}(s) = V_{t+n-1}(s)$, for all $s \neq S_t$.
+\end{itemize}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\section{Planning and Learning with Tabular Methods (Model based RL)}
+
+(Book section 8)
+
+So far, we’ve used off-policy learning to facilitate exploration in a problem that has one goal. But actually you can use off-policy learning to learn how to get to many different goals.
+
+
+
 
 \end{document}
