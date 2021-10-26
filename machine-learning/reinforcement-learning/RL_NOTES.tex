@@ -2551,7 +2551,7 @@ Expected Sarsa with greedy target policy $\equiv (equivalent\;to)$ Q-Learning
 
 
 
-\section{$n$-step Bootstrapping}
+\section{$n$-step Bootstrapping}\label{nstep-bootstrapping}
 
 \begin{tcolorbox}[colback=yellow!5,colframe=yellow!75!black,title=NOTE]
   \textbf{Idea of $n$-step methods} is \textcolor{Orange}{usually used as an \uline{introduction to the algorithmic idea of \textit{eligibility traces} (Chapter 12)}}, which enable bootstrapping over multiple time intervals simultaneously. \textbf{Here} we instead consider the n-step bootstrapping idea on its own.
@@ -2629,11 +2629,1339 @@ Expected Sarsa with greedy target policy $\equiv (equivalent\;to)$ Q-Learning
 
 
 
-\section{Planning and Learning with Tabular Methods (Model based RL)}
+\section{Planning and Learning with Tabular Methods (Model based RL)}\label{planning-and-learning-with-tabular-methods}
 
-(Book section 8)
+We've seen:
+\begin{itemize}
+  \item sample-based methods like TD which learn only from sampled experience.
+  \item dynamic programming methods which plan by using complete information about how things work, without having to make decisions.
+\end{itemize}
+It would be even better if we could obtain an intermediate method that can leverage the best of both extremes.
 
 So far, we’ve used off-policy learning to facilitate exploration in a problem that has one goal. But actually you can use off-policy learning to learn how to get to many different goals.
+
+
+
+
+
+
+\subsection{Models and Planning}\label{models-and-planning}
+
+
+\textbf{\textcolor{blue}{Model:}} is used to \uline{store knowledge about the dynamics}. It should produce a possible next state and reward. This allows us to see an outcome of an action without having to actually take it.
+
+\begin{figure}[H]
+  \centering
+    \includegraphics[width=0.6\columnwidth]{images/model.png}
+    \label{fig:model}
+\end{figure}
+
+\begin{itemize}
+  \item \textbf{\textcolor{blue}{Planning}} refers to the process of \uline{using a \textcolor{blue}{model} to improve a policy (with simulated experience)}. One way is to:
+  \begin{enumerate}
+    \item Simulate experience (sample experience from the model)
+    \begin{itemize}
+      \item Simulating experience improves the sample efficiency. The addition of simulated experience means the agent needs fewer interactions with the world to come up with the same policy.
+    \end{itemize}
+    \item Perform value function updates as if those experiences happened
+    \item Behaving greedily with respect to these improved values results in improved policy.
+    \begin{figure}[H]
+      \centering
+        \includegraphics[width=0.8\columnwidth]{images/planning.png}
+        \includegraphics[width=0.8\columnwidth]{images/planning2.png}
+        \label{fig:planning}
+    \end{figure}
+  \end{enumerate}
+\end{itemize}
+
+
+
+
+\textbf{\textcolor{blue}{Types of Models:}}
+\begin{itemize}
+  \item \textbf{\textcolor{blue}{Sample Model:}} produces an actual outcome drawn from some underlying probabilities. They generate samples without explicitly storing the probability of each outcome.
+  \begin{itemize}
+    \item \textbf{\textcolor{Green}{Pros} \& \textcolor{red}{Cons}:}
+    \begin{itemize}
+      \item[\textcolor{Green}{$+$}] require \textcolor{Green}{less memory / computationally inexpensive} (because random outcomes can be produced according to a set of rules)
+      \item[\textcolor{red}{$-$}] can \textcolor{red}{only approximate expected outcome}
+    \end{itemize}
+  \end{itemize}
+  \item \textbf{\textcolor{blue}{Distribution Model:}} completely specifies the likelihood or probability of every outcome.
+  \begin{itemize}
+    \item \textbf{\textcolor{Green}{Pros} \& \textcolor{red}{Cons}:}
+    \begin{itemize}
+      \item can \textcolor{Green}{compute the exact expected outcome} (by summing over all outcomes weighted by their probabilities). These \textcolor{Green}{can be used to assess risk}.
+      \item \textcolor{red}{can be difficult to specify} and \textcolor{red}{can become very large}
+    \end{itemize}
+  \end{itemize}
+\end{itemize}
+
+
+
+
+\textbf{\textcolor{blue}{Random-sample one-step tabular Q-planning:}}
+
+\begin{itemize}
+  \item Process:
+  \begin{figure}[H]
+    \centering
+      \includegraphics[width=0.8\columnwidth]{images/random-sample-one-step-tabular-q-learning.png}
+      \label{fig:random-sample-one-step-tabular-q-learning}
+  \end{figure}
+  \item Assumptions:
+  \begin{itemize}
+    \item we have a sample model of the transition dynamics.
+    \item we have a strategy for sampling relevant state action pairs
+    \begin{figure}[H]
+      \centering
+        \includegraphics[width=0.5\columnwidth]{images/planning3.png}
+        \label{fig:planning3}
+    \end{figure}
+  \end{itemize}
+  \item Connection with Q-learning:
+  \begin{itemize}
+    \item Recall that \textbf{Q-learning} uses \uline{experienced from the environment}, they performs an update to improve a policy.
+    \item In \textbf{Q-planning}, we use \uline{experience from the model} and perform a similar update to improve a policy.
+  \end{itemize}
+\end{itemize}
+
+
+
+
+
+
+
+
+
+
+
+
+\subsection{Dyna (Architecture): Integrated Planning, Acting, and Learning}\label{dyna}
+
+\textbf{What:} one way to \textbf{combine} \uline{direct RL updates} and \uline{planning updates}.
+
+
+\textbf{\textcolor{blue}{Dyna Architecture:}}
+\begin{figure}[H]
+  \centering
+    \includegraphics[width=0.8\columnwidth]{images/dyna-architecture.png}
+    \label{fig:dyna-architecture}
+\end{figure}
+\begin{itemize}
+  \item \textbf{Search control:} controlling how the model generates simulated experience, what states the agent will plan from (most be something the agent has seen before, otherwise the model wouldn't know what happens next).
+\end{itemize}
+
+
+\textbf{Example:} Agent learning path without vs. with (n) planning steps:
+\begin{figure}[H]
+  \centering
+    \includegraphics[width=0.8\columnwidth]{images/planning-vs-not.png}
+    \caption{Policies found by planning and nonplanning Dyna-Q agents halfway through the second episode.}
+    \label{fig:planning-vs-not}
+\end{figure}
+
+
+Pseudocode algorithm for Dyna-Q:
+
+\begin{tcolorbox}[title={Tabular Dyna-Q}]
+
+\textbf{Initialize:} $Q(s, a)$ and $Model(s, a)$ for all $s \in \mathcal{S}, a \in \mathcal{A}(s)$ \\
+
+\textbf{Loop forever:}
+\begin{itemize}
+   \item[(a)] $\;\;\;$ $S \leftarrow$ current (nonterminal) state
+   \item[(b)] $\;\;\;$ $A \leftarrow \epsilon$-greedy$(S,Q)$
+   \item[(c)] $\;\;\;$ Take action $A$ observe $R, S'$
+   \item[(d)] $\;\;\;$ $Q(S, A) \leftarrow Q(S, A) + \alpha [R + \gamma \max_a Q(S', a) - Q(S, A)]$
+   \item[(e)] $\;\;\;$ $Model(S, A) \leftarrow R, S'$ (assuming deterministic environment)
+   \item[(f)] $\;\;\;$ \textbf{Loop repeat $n$ times:}
+   \begin{description}
+     \item $\;\;\;$ $S \leftarrow$ random previously observed state
+     \item $\;\;\;$ $A \leftarrow$ random action previously taken in $S$
+     \item $\;\;\;$ $R,S' \leftarrow Model(S, A)$
+     \item $\;\;\;$ $Q(S, A) \leftarrow Q(S, A) + \alpha [R + \gamma \max_a Q(S', a) - Q(S, A)]$
+   \end{description}
+\end{itemize}
+\end{tcolorbox}
+
+Dyna-Q is more sample efficient than Q-learning
+
+
+
+
+
+
+
+
+
+
+\subsection{When the Model Is Wrong / Inaccurate}\label{wrong-model}
+
+Models are inaccurate when transitions they store are different from transitions that happen in the environment.
+
+\textbf{How models can be \textcolor{red}{inaccurate}:}
+\begin{itemize}
+  \item \textbf{\textcolor{red}{Incomplete model}:} At the beginning of learning, the agent hasn't tried most of the actions in almost all of the states. $\rightarrow$ Transitions associated with trying those actions in those states are simply missing from the model.
+  \item \textbf{\textcolor{red}{Changing environment}:} Taking an action in a state could result in a different next state and reward than what the agent observed before the change.
+\end{itemize}
+
+Planning with an inaccurate model improves the policy or value function with respect to the model and not the environment.
+
+Dyna-Q can plan with an incomplete model by only sampling state action pairs that had been previously visited.
+
+
+
+
+
+\textbf{\textcolor{blue}{Dyna-$Q^+$ algorithm:}} uses a reward bonus in its planning updates to encourage exploration. By exploring, Dyna-$Q^+$ keeps its model up-to-date and accurate, resulting in better performance.
+
+\begin{gather*}
+\text{New reward} = r + \textcolor{blue}{\kappa + \sqrt{\tau}} \\ \\
+  \textbf{Where:} \\
+  r \text{: actual reward} \\
+  \tau \text{: time step since transition was last tried} \\
+  \kappa  \text{: small constant that controls the influence of the} \\ \text{bonus on the planning update}
+\end{gather*}
+
+\begin{figure}[H]
+  \centering
+    \includegraphics[width=0.9\columnwidth]{images/dyna-q-plus.png}
+    \label{fig:dyna-q-plus}
+\end{figure}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\newpage
+\part{Approximate Solution methods}\label{approximate-solution-methods}
+
+
+In this part we describe how to \textbf{apply RL for arbitrarily large state spaces}. In many of our target tasks, almost every state encountered will never have been seen before. To make sensible decisions in such states it is necessary to \uline{\textit{generalize}} from previous encounters with different states that are in some sense similar to the current one. We can use \uline{\textit{function approximation} (instance of \textit{supervised learning}) for this task}.
+
+
+In such cases we \textcolor{red}{cannot expect to find an optimal policy} or the optimal value function even in the limit of infinite time and data; our \textbf{goal instead} is to \uline{find a good approximate solution} using limited computational resources.
+
+
+
+
+This involves a number of new issues that do not normally arise in conventional supervised learning, such as nonstationarity, bootstrapping, and delayed targets. We introduce these and other issues successively over the five chapters of this part
+
+
+
+\textbf{Chapters in this section:}
+
+\begin{itemize}
+  \item Initially we restrict attention to \textbf{on-policy} training:
+  \begin{itemize}
+    \item[9.] On-policy \textbf{prediction} case (policy is given and only its value function is approximated)
+    \item[10.] On-policy \textbf{control} case (approximation to the optimal policy is found)
+  \end{itemize}
+  \item[11.] \textbf{Off-policy} learning with function approximation
+  \item[12.] Introducing and analyzing the algorithmic mechanism of \textbf{eligibility traces}, which \uline{dramatically improves the computational properties} of multi-step reinforcement learning methods in many cases.
+  \item[13.] Exploring a \uline{different approach to control}, \textbf{policy-gradient methods}, which approximate the optimal policy directly and need never form an approximate value function (although they may be much more efficient if they do approximate a value function as well the policy).
+\end{itemize}
+
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+\newpage
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\section{On-policy Prediction with Approximation}\label{on-policy-prediction-with-approximation}
+
+
+Function approximation in reinforcement learning by considering its use in estimating the state-value function from on-policy data.
+
+
+
+\subsection{Value-function Approximation}\label{value-function-approximation}
+
+
+Function approximation methods expect to receive examples of the desired input–output behavior of the function they are trying to approximate. We use these methods for value prediction simply by passing to them the $s \rightarrow u$ ($s$ should be more like $u$) of each update as a training example. We then interpret the approximate function they produce as an estimated value function.
+
+
+Supervised methods in value approximation:
+\begin{itemize}
+  \item must be able to \uline{learn online}
+  \item must \uline{handle nonstationary target functions} (target functions that change over time)
+\end{itemize}
+
+
+
+\textbf{\textcolor{blue}{Generalization} in the context of policy evaluation} means that \uline{updates to the value estimate of one state influence the value of other states}.
+
+\begin{itemize}
+  \item Benefits:
+  \begin{itemize}
+    \item can speed learning by making better use of the experience we have $\rightarrow$ we may not have to visit every state as much to get this values correct if we can learn its value from similar states
+  \end{itemize}
+\end{itemize}
+
+
+\textbf{\textcolor{blue}{Discrimination} in the context of policy evaluation} means the \uline{ability to make the values for two states different to distinguish between the values for these two states}.
+
+
+
+\begin{figure}[H]
+  \centering
+    \includegraphics[width=0.8\columnwidth]{images/generalization-discrimination.png}
+    \caption{Categorizing methods based on \textcolor{blue}{generalization} and \textcolor{blue}{discrimination}}
+    \label{fig:generalization-discrimination}
+\end{figure}
+\begin{itemize}
+  \item[*] = What we would really like is a learning method that achieves good generalization and a good discrimination. Such a method would generalize the learn values to similar states, allowing it to learn faster, but it could also discriminate between states. Meaning, with more data, the value function approximation can accurately represent the values.
+  \item = In practice, we are more likely to get a point here, where we trade off some level of discrimination for generalization.
+\end{itemize}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\subsection{Prediction Objective $(\overline{VE})$}\label{prediction-objective}
+
+
+Policy evaluation under \textit{function approximation} \textbf{requires us to specify an objective} $\rightarrow$ \textcolor{blue}{Mean Squared Value Error $(\overline{VE})$}:
+
+$$
+\overline{VE}(w) \doteq \sum_{s \in \mathcal{S}} \mu(s) (v_\pi(s) - \hat{v}(s, w))^2
+$$
+
+
+\textbf{Intuition:}
+\begin{itemize}
+  \item By assumption we have far \uline{more \textbf{states} than \textbf{weights}}, so \textcolor{Green}{making one state’s estimate more accurate} \textcolor{red}{invariably means making others' less accurate}.
+  \item  We are \textcolor{Orange}{obligated then to say which states we care most about} $\rightarrow$ We must specify a \textbf{\textcolor{blue}{state distribution $\mu(s) > 0, \sum_s mu(s) = 1$}}, representing how much we care about the error in each state $s$. The \uline{states that the policy spends more time in have a higher weight in the objective}. We care less about errors in the states the policy visits less frequently.
+\end{itemize}
+
+
+
+
+
+
+
+
+
+
+
+\subsection{Stochastic-gradient and Semi-gradient Methods (for $\overline{VE}$ minimization)}\label{gradient-descent}
+
+
+\subsubsection{Stochastic-gradient Methods}\label{stochastic-gradient-methods}
+
+
+\textbf{Recall \textcolor{blue}{Derivative}:} tells us how to locally change $W$ to increase or decrease $f$.
+
+\begin{figure}[H]
+  \centering
+    \includegraphics[width=0.8\columnwidth]{images/derivatives.png}
+    \label{fig:derivatives}
+\end{figure}
+
+\begin{itemize}
+  \item \textbf{Sign ($+ / -$):} indicates the direction to change $W$ to increase $f$.
+  \item \textbf{Magnitude:} the slope of the function $f$ at the point $W$.
+\end{itemize}
+
+\textbf{\textcolor{blue}{Gradient}:} \textcolor{blue}{Derivative} on Multiple Dimensions. So it tells us how $f$ changes as the vector $W$ changes.
+\begin{itemize}
+  \item If $f$ is privatized by more than one variable, then $W$ is a vector. The gradient is a vector of partial derivatives, indicating how a local change in each component of $W$ affects the function $f$.
+  $$
+  w \doteq \begin{bmatrix}
+                  w_{1} \\
+                  w_{2} \\
+                  ... \\
+                  w_{d}
+            \end{bmatrix} \;\;\;
+  \nabla f \doteq \begin{bmatrix}
+                  \frac{\partial f}{\partial w_{1}} \\
+                  \frac{\partial f}{\partial w_{2}} \\
+                  ... \\
+                  \frac{\partial f}{\partial w_{d}}
+                  \end{bmatrix}
+  $$
+  \begin{itemize}
+    \item The sign of each component of the gradient specifies the direction to change the associated component of $W$, in order to increase $f$. The magnitude of the component specifies how quickly $f$ changes, as $W$ moves in that direction.
+    \item The gradient \textcolor{Green}{\uline{gives the direction of steepest descent}. It provides the direction to change $W$, so that locally $f$ is maximally increased}.
+  \end{itemize}
+\end{itemize}
+
+
+
+Mean Squared Value Error $(\overline{VE}(w))$ is a function of the weights to minimize with \textbf{\textcolor{blue}{Gradient Descent} (used to find stationary points of objectives)}.
+\begin{itemize}
+  \item Gradient Descent update rule:
+  $$
+  w_{t+1} \doteq w_t - \underbrace{\alpha}_\text{Step-Size} \underbrace{\nabla f(w_t)}_\text{Gradient}
+  $$
+  \begin{figure}[H]
+    \centering
+      \includegraphics[width=0.8\columnwidth]{images/gradient-descent.png}
+      \label{fig:gradient-descent}
+  \end{figure}
+  \begin{itemize}
+    \item Local minima is stable, so gradient descent will tend to converge there. However, for convex functions, gradient descent is guaranteed to converge to the global minimum, which is the best possible setting of the weights for the objective.
+  \end{itemize}
+\end{itemize}
+
+
+
+
+
+
+\textbf{\textcolor{blue}{Gradient} for Policy Evaluation:}
+
+\begin{itemize}
+
+  \item \textbf{\textcolor{red}{(Standard) Gradient Descent:}}
+  \begin{figure}[H]
+    \centering
+      \includegraphics[width=0.8\columnwidth]{images/gradient-for-mse.png}
+      \label{fig:gradient-for-mse}
+  \end{figure}
+
+  \begin{itemize}
+    \item The gradient of the value function approximation indicates how to change the weights to increase the value for that state.
+    \item Computing the gradient for $\overline{VE}$ \textcolor{Orange}{requires summing over all states}. This is generally \textcolor{red}{not feasible for large state spaces}. Also, we likely \textcolor{red}{do not know the distribution $\mu$}.
+  \end{itemize}
+
+  \item \textbf{\textcolor{Orange}{Stochastic Gradient Descent:} only uses a stochastic estimate of the gradient (to approximate this gradient).}
+
+  \begin{itemize}
+    \item[]
+    \begin{itemize}
+      \item expectation of each stochastic gradient = gradient of the objective
+    \end{itemize}
+
+    \item Though \textcolor{Orange}{we do not explicitly have $\mu$}, we can \textcolor{Green}{sample states from it simply by following the policy}. We can use the $(S, v_\pi(S))$ pairs to make an update to decrease the error on states.
+    \item \textbf{By making small updates in the direction that improves error on each $(S, v_\pi(S))$ pair}, we \textcolor{Orange}{might sometimes increase the error on the full objective}. But the \textcolor{Green}{overall trend will be to make progress for the full objective}.
+    \item \textcolor{red}{One remaining practical issue:} we \textcolor{red}{do not have access to $v_\pi$}.
+
+  \end{itemize}
+
+  \item \textbf{\textcolor{Green}{Gradient Monte Carlo} for value estimation:}
+
+  \begin{itemize}
+    \item We can get rid of $v_\pi$ from our update rule.
+    \item Using samples of the return for each visited state, $S_t$, as we did for Monte Carlo methods.
+    \begin{figure}[H]
+      \centering
+        \includegraphics[width=0.6\columnwidth]{images/gradient-monte-carlo.png}
+        \label{fig:gradient-monte-carlo}
+    \end{figure}
+  \end{itemize}
+
+\end{itemize}
+
+
+
+
+\begin{tcolorbox}[title={Gradient Monte Carlo Algorithm for Estimating $\hat{v} \approx v_\pi$}]
+
+  \textbf{Input:} the policy $\pi$ to be evaluated
+
+  \textbf{Input:} a differentiable function $\hat{v}: \mathcal{S} \times \mathbb{R}^d \to R$
+
+  \textbf{Algorithm parameter:} step size $\alpha > 0$
+
+  \textbf{Initialize:} value-function weights $w \in \mathbb{R}^d$ arbitrarily (e.g., $w=0$)
+
+  \textbf{Loop forever (for each episode):}
+  \begin{description}
+      \item $\;\;\;$ Generate an episode using $\pi$
+      \item $\;\;\;$ \textbf{Loop for each step of episode, $t=0,1,...,T-1$:}
+      \begin{description}
+        \item $\;\;\;$ $w \leftarrow w + \alpha (G_t -\hat{v}(S_t, w)) \nabla \hat{v}(S_t, w)$
+      \end{description}
+  \end{description}
+\end{tcolorbox}
+
+
+\bigskip
+
+\textbf{Example:} Gradient Monte Carlo with State Aggregation
+\begin{itemize}
+  \item Random walk starting from 500, terminating in either 0 (w. return -1) or 1 (w. return +1).
+  \item With state aggregation, aggregate the 1000 states to 10 weights.
+  \begin{figure}[H]
+    \centering
+      \includegraphics[width=0.8\columnwidth]{images/gradient-monte-carlo-with-state-aggregation.png}
+      \label{fig:gradient-monte-carlo-with-state-aggregation}
+  \end{figure}
+\end{itemize}
+
+
+
+
+
+
+\subsubsection{Semi-gradient TD}\label{semi-gradient-td}
+
+\textbf{What:} TD learning with function approximation (approximation to stochastic gradient descent).
+
+\begin{itemize}
+  \item \textit{Semi-gradient method}, as TD is not performing gradient descent updates on the squared error. It's not a gradient descent algorithm.
+\end{itemize}
+
+
+\begin{tcolorbox}[title={Semi-gradient TD(0) for estimating $\hat{v} \approx v_\pi$}]
+
+  \textbf{Input:} the policy $\pi$ to be evaluated
+
+  \textbf{Input:} a differentiable function $\hat{v}: \mathcal{S}^+ \times \mathbb{R}^d \to R$ such that $\hat{v}(terminal,\cdot) = 0$
+
+  \textbf{Algorithm parameter:} step size $\alpha > 0$
+
+  \textbf{Initialize:} value-function weights $w \in \mathbb{R}^d$ arbitrarily (e.g., $w=0$)
+
+  \textbf{Loop for each episode:}
+  \begin{description}
+      \item $\;\;\;$ Initialize $S$
+      \item $\;\;\;$ \textbf{Loop for each step of episode:}
+      \begin{description}
+        \item $\;\;\;$ Choose $A \sim \pi(\cdot | S)$
+        \item $\;\;\;$ Take action $A$, observe $R, S'$
+        \item $\;\;\;$ $w \leftarrow w + \alpha ((R + \gamma \hat{v}(S',w)) -\hat{v}(S, w)) \nabla \hat{v}(S, w)$
+        \item $\;\;\;$ $S \leftarrow S'$
+      \end{description}
+      \item $\;\;\;$ \textbf{Until $S$ is terminal}
+  \end{description}
+\end{tcolorbox}
+
+
+We can denote approximation of $v_\pi(S_t)$ with $U_t$. This yields the following \textcolor{blue}{general SGD update} for state-value prediction:
+
+$$
+w_{t+1} \doteq w_t + \alpha (U_t - \hat{v}(S_t,w_t)) \nabla \hat{v}(S_t, w_t)
+$$
+
+
+
+\textbf{\textcolor{blue}{Semi-gradient TD} vs \textcolor{blue}{Gradient Monte Carlo}:}
+\begin{itemize}
+  \item \textbf{\textcolor{blue}{Semi-gradient TD}:} biased TD updates $\rightarrow$ \textcolor{red}{cannot guarantee convergence to a local minimum}. But we often prefer TD learning over Monte Carlo anyway because it can \textcolor{Green}{converge more quickly}, due to taking advantage of bootstrapping.
+  \item \textbf{\textcolor{blue}{Gradient Monte Carlo}:} \textcolor{Green}{converge to a local minimum}
+\end{itemize}
+
+
+
+
+
+
+
+
+
+
+\subsection{Linear Methods}\label{linear-methods}
+
+\textbf{What:} Linear value function approximation is a strict generalization of tabular value function approximation.
+
+
+\textbf{Benefits:}
+\begin{itemize}
+  \item Linear methods are \textcolor{Green}{simpler to understand} and analyze mathematically.
+  \item Linear methods are interesting because of their \textcolor{Green}{convergence guarantees}, but also because in practice they \textcolor{Green}{can be very efficient in terms of both data and computation}.
+  \item Much of the theory of TD learning is for the linear setting.
+\end{itemize}
+
+
+\textbf{Linear methods} approximate the state-value function by the inner product between $w$ and $x(s)$:
+\begin{gather*}
+  \hat{v}(s,w) \doteq w^T x(s) \doteq \sum_{i=1}^d w_i x_i (s) \\ \\
+  \textbf{Where:} \\
+  x(s) \text{: \textit{feature vector} representing state $s$}
+\end{gather*}
+
+It is natural to use Stochastic Gradient Descent (SGD) updates with linear function approximation. The \uline{\textbf{gradient} of the approximate value function with respect to $w$} in this case is
+$$
+\nabla \hat{v}(s,w) = x(s)
+$$
+
+Thus, in the linear case the \textcolor{blue}{general SGD update} reduces to a particularly simple form:
+
+$$
+w_{t+1} \doteq w_t + \alpha (U_t - \hat{v}(S_t,w_t)) x(S_t)
+$$
+
+
+
+\textbf{\textcolor{blue}{Linear (Semi-gradient) TD}}
+\begin{itemize}
+  \item \textbf{Converges} to a well understood approximation called the \textcolor{blue}{TD fixed point $W_{TD}$}.
+  \begin{itemize}
+    \item It is a solution to this linear system:
+    $$
+    \textcolor{blue}{W_{TD}} = A^{-1} b
+    $$
+    \item Converged when (\textcolor{purple}{Expected TD Update $= 0$})
+  \end{itemize}
+  \item TD update with linear function approximation: \textcolor{purple}{Expected TD Update}. It characterizes the \uline{expected change in the weight from one time step to the next}.
+  $$
+  \mathbb{E}[ \Delta \textcolor{blue}{W_{TD}}] = w_t + \alpha (b - A \textcolor{blue}{W_{TD}})
+  $$
+  \begin{itemize}
+    \item \textbf{Where:}
+    \begin{itemize}
+      \item \textbf{matrix $A$} is defined in terms of an \uline{expectation over the features}
+      $$
+      A \doteq \mathbb{E}[x_t (x_t - \gamma x_{t+1})^T]
+      $$
+      \item \textbf{vector $b$} vector b is defined in terms of the \uline{reward and the features}
+      $$
+      b \doteq \mathbb{E}[R_{t+1} x_t]
+      $$
+    \end{itemize}
+  \end{itemize}
+  \item \textbf{Key takeaway} is that even though TD does not converge to the minimum of the mean squared value error, It does \uline{converge to the minimum of a principled objective, based on Bellman equations}.
+\end{itemize}
+
+
+
+
+
+
+
+
+
+
+
+
+\subsection{Feature Construction for Linear Methods}\label{feature-construction-for-linear-methods}
+
+Here we discuss different ways to construct state, and state-action features.
+
+\textbf{Choosing features appropriate to the task} is an \uline{important way of adding prior domain knowledge} to reinforcement learning systems.
+
+A \textbf{limitation of the linear} form is that it \textcolor{red}{cannot take into account any interactions between features}, such as the presence of feature i being good only in the absence of feature j.
+
+
+
+
+
+\subsubsection{Polynomials}\label{polynomials}
+
+While the basic polynomial features we discuss here \textcolor{red}{do not work as well as other types of features in RL}, they serve as a good introduction because they are simple and familiar.
+
+
+
+
+\subsubsection{Fourier Basis}\label{fourier-basis}
+
+Another linear function approximation method is based on the time-honored Fourier series, which \uline{expresses periodic functions as weighted sums of sine and cosine basis functions (features) of different frequencies}.
+
+In RL, where the functions to be approximated are unknown, Fourier basis functions are of interest because they are \textcolor{Green}{easy to use and can perform well in a range of RL problems}.
+
+
+
+\subsubsection{Coarse Coding}\label{coarse-coding}
+
+Recall, \textbf{state aggregation:} is the process of aggregating states for a smaller number of weights. Similar states are aggregated together.
+
+\begin{itemize}
+  \item \textbf{Example:} represent the location of this fish that's swimming in a pond, a two-dimensional continuous state space:
+  \begin{figure}[H]
+    \centering
+      \includegraphics[width=0.7\columnwidth]{images/state-aggregation-eg.png}
+      \label{fig:state-aggregation-eg}
+  \end{figure}
+\end{itemize}
+
+
+
+\textbf{\textcolor{blue}{Course coding}} is a generalization of state aggregation that allows shapes to overlap. By allowing the shapes to overlap, we obtain a more \uline{flexible class of \textbf{feature representations}} called course coding.
+
+\begin{itemize}
+  \item \textbf{Example:} represent the location of this fish that's swimming in a pond, a two-dimensional continuous state space:
+  \begin{figure}[H]
+    \centering
+      \includegraphics[width=0.7\columnwidth]{images/coarse-coding-eg.png}
+      \label{fig:coarse-coding-eg}
+  \end{figure}
+\end{itemize}
+
+
+\textbf{Generalization Properties of Coarse Coding:}
+\begin{itemize}
+  \item If the union of the receptive fields for the active features is large, the feature representation generalizes more.
+  \item Using different shapes in coarse coding can change the direction of generalization as well.
+  \item The overlap between shapes dictates the level of discrimination.
+  \item Every state within the same shape will have the exact same feature vector. As a result, they must all have the same approximate value.
+  \item \uline{size, number, and shape of the features} all affect the \textbf{discriminative ability} of the representation.
+\end{itemize}
+
+
+
+
+
+\subsubsection{Tile Coding}\label{tile-coding}
+
+\textbf{What:} a \textcolor{Green}{computationally efficient} way to perform \uline{Course Coding}.
+
+\textbf{How:} performs an exhaustive \uline{partition of the state space using overlapping grids} $\rightarrow$ many small intersections $\rightarrow$ better discrimination.
+
+\begin{itemize}
+  \item Put several tilings on top of each other, with each tiling is offset by a small amount.
+  \item For:
+  \begin{itemize}
+    \item \textbf{one tiling}, generalization only occurs within the square
+    \item \textbf{multiple tilings}, updates in a state generalize to other intersecting states
+  \end{itemize}
+\end{itemize}
+
+layering squares over this squished environment is like laying rectangles over the unsquished environment. By using rectangles, we can control the broadness of the generalization across each dimension of the state-space.
+
+
+Good in low dimensional environments. However, \textcolor{red}{as the number of dimensions grows, the number of required tiles grows exponentially}. As a result, it can be necessary to tile input dimension separately.
+
+\begin{itemize}
+  \item \textbf{Example:} represent the location of this fish that's swimming in a pond, a two-dimensional continuous state space:
+  \begin{figure}[H]
+    \centering
+      \includegraphics[width=0.7\columnwidth]{images/tile-coding-eg.png}
+      \label{fig:tile-coding-eg}
+  \end{figure}
+\end{itemize}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\subsubsection{Radial Basis Functions (RBFs)}\label{radial-basis-functions}
+
+\textbf{What:} natural generalization of coarse coding to continuous-valued features.
+
+
+\textbf{How:} Rather than each \textbf{feature} being either 0 or 1, it \uline{can be anything in the interval [0, 1]}, reflecting various \textit{degrees} to which the feature is present.
+
+A \textbf{typical RBF feature}, $x_i$, has a Gaussian (bell-shaped) response $x_i(s)$ dependent only on the distance between the state, $s$, and the feature’s prototypical or center state, $c_i$, and relative to the feature’s width, $\sigma_i$:
+
+$$
+x_i(s) \doteq \exp{\left(-\frac{||s-c_i||^2}{2\sigma_i^2}\right)}
+$$
+
+The \textbf{norm} or \textbf{distance metric} of course can be chosen in whatever way seems most appropriate to the states and task at hand. The figure below shows a one-dimensional example with a Euclidean distance metric.
+
+\begin{figure}[H]
+  \centering
+    \includegraphics[width=0.7\columnwidth]{images/radial-basis-functions.png}
+    \caption{One-dimensional radial basis functions.}
+    \label{fig:radial-basis-functions}
+\end{figure}
+
+
+The primary advantage of RBFs over binary features is that they produce \textcolor{Green}{approximate functions that vary smoothly and are differentiable}. Although this is appealing, \textcolor{red}{in most cases it has no practical significance}.
+
+
+
+
+
+
+
+
+
+
+
+\subsection{Selecting Step-Size Parameters Manually}\label{selecting-stepsize-parameters-manually}
+
+Most SGD methods require the designer to select an appropriate step-size parameter $\alpha$. Ideally selecting the step-size parameter $\alpha$ would be automated, and in some cases it has been, but for most cases it is still common practice to set it manually.
+
+The classical choice:
+
+$$
+\alpha_t = 1/t
+$$
+\begin{itemize}
+  \item produces sample averages in tabular MC methods
+  \item \textcolor{red}{not appropriate for} \uline{TD methods}, for \uline{nonstationary problems}, or for \uline{any method using function approximation}.
+\end{itemize}
+
+In tabular case
+\begin{itemize}
+  \item $\alpha = 1$ will result in a complete elimination of the sample error after one target (we usually want to learn slower than this).
+  \item a step size of $\alpha = \frac{1}{10}$ would take about 10 experiences to converge approximately to their mean target, and if we wanted to learn in 100 experiences we would use $\alpha = \frac{1}{100}$.
+  \item In general, if $\alpha = \frac{1}{\tau}$, then the tabular estimate for a state will approach the mean of its targets, with the most recent targets having the greatest effect, after about $\tau$ experiences with the state.
+\end{itemize}
+
+With general function approximation there is not such a clear notion of number of experiences with a state, as each state may be similar to and dissimilar from all the others to various degrees. However, there is a similar rule that gives similar behavior in the case of linear function approximation. Suppose you wanted to learn in about $\tau$ experiences with substantially the same feature vector. A good rule of thumb for setting the step-size parameter of linear SGD methods is then
+
+$$
+\alpha \doteq (\tau \mathbb{E}[x^Tx])^{-1}
+$$
+
+where x is a random feature vector chosen from the same distribution as input vectors will be in the SGD. This method works best if the feature vectors do not vary greatly in length; ideally $x^Tx$ is a constant.
+
+
+
+
+
+
+
+
+
+
+\subsection{Nonlinear Function Approximation: Artificial Neural Networks}\label{neural-networks}
+
+\textbf{What:} a flexible and powerful class of nonlinear function approximators.
+
+\textbf{Why:} Neural networks provide a strategy \textcolor{Green}{for learning a useful set of features}.
+
+\textbf{Feed forward pass of a neural network mathematically (e.g.):}
+\begin{figure}[H]
+  \centering
+    \includegraphics[width=0.7\columnwidth]{images/ann-feed-forward.png}
+    \label{fig:ann-feed-forward}
+\end{figure}
+\begin{itemize}
+  \item At \textbf{each node} we have \uline{two vectors}:
+  \begin{itemize}
+    \item Inputs: $s = [s_1, s_2]$
+    \item Weights for each input: $w_1 = [w_{1,1}, w_{2,1}]^T$
+  \end{itemize}
+  \item At \textbf{each node} we \uline{dot product} the weights $w_1$ with the input $s$ and pass the result through the \uline{activation function} $f(s \times w_t)$.
+  \item \textbf{Each node} has a \uline{different set of weights} $\rightarrow$ produce a \uline{different output}, (which we call a \textit{feature}).
+\end{itemize}
+
+So neural networks can be viewed as a \uline{way to construct features}, and that neural networks are \uline{non-linear functions of state}.
+
+
+\textbf{Deep Neural Networks:}
+\begin{itemize}
+  \item \textbf{Why:} depth can \textcolor{Green}{facilitate learning features} \textbf{through} \uline{composition} and \uline{abstraction}.
+  \item \textbf{Challenge:} In practice, \textcolor{Orange}{picking the right architecture can be difficult and can significantly impact performance}.
+  \item \textbf{Universal Approximation Property:} in theory, a neural network need not be deep. A neural network with a \uline{single hidden layer can approximate any continuous function given that is sufficiently wide}.
+  \item \textbf{Depth =} \# of hiddel layers in the network
+  \begin{itemize}
+    \item \textcolor{Green}{allows \uline{composition of features}} $\rightarrow$ \textcolor{Green}{can produce \uline{more specialized features} by combining modular components.}
+    \item can also be \textcolor{Green}{helpful for obtaining abstractions}. Deep neural networks \uline{compose many layers of lower-level abstractions with each successive layer} contributing to increasingly abstract representations.
+    \begin{itemize}
+      \item For example, a network can be designed with a \textbf{bottleneck layer}. The idea is simple. \uline{Each successive layer contains less nodes than the layer before}. The representation is the layer with the fewest nodes and contains the key details needed for prediction.
+    \end{itemize}
+  \end{itemize}
+\end{itemize}
+
+
+
+\textbf{Backpropagation:} (Gradient Descent for Training Neural Networks)
+\begin{itemize}
+
+  \item \textbf{In a nutshell:}
+  \begin{figure}[H]
+    \centering
+      \includegraphics[width=0.9\columnwidth]{images/training-nn.png}
+      \label{fig:training-nn}
+  \end{figure}
+
+  \item \textbf{Notation:}
+  \begin{figure}[H]
+    \centering
+      \includegraphics[width=0.5\columnwidth]{images/ann-notation.png}
+      \label{fig:ann-notation}
+  \end{figure}
+  \begin{itemize}
+    \item \textbf{weights (matrix) $A$} linearly weight $s$ to produce the features $x$
+    \item \textbf{weights (matrix) $B$} linearly weight $x$ to produce the output $\hat{y}$
+    \item \textbf{(output of hidden layer) $x$}$ \doteq f_A(\psi)$
+    \begin{itemize}
+      \item $\psi \doteq sA$
+    \end{itemize}
+    \item \textbf{(final output) $\hat{y}$} $\doteq f_B(\theta)$
+    \begin{itemize}
+      \item $\theta \doteq xB$
+    \end{itemize}
+  \end{itemize}
+
+
+  \item The errors $\delta B$ from the output of the network are propagated backwards to this earlier layer to help determine the role $A$ had in producing that error ($\delta A$).
+
+
+  \item \textbf{Full derivation (deriving the gradient):}
+  \begin{itemize}
+
+
+    \item \textbf{Gradient for $B$:}
+    \begin{enumerate}
+      \item Take the \textcolor{Purple}{partial derivative} \uline{\textbf{of} the \textbf{loss function $L(\hat{y}_k, y_k)$}} \uline{\textbf{with respect to} the first set of \textbf{weights $B$}}: $\frac{\partial L(\hat{y}_k, y_k)}{\partial B_{jk}}$
+      \begin{itemize}
+        \item We use the \textcolor{Purple}{chain rule} given the \uline{derivative of $L$ with respect to $\hat{y}$} \textbf{times} the \uline{derivative of $\hat{y}$ with respect to $B$}:
+        $$
+        \frac{\partial L(\hat{y}_k, y_k)}{\partial B_{jk}} = \frac{\partial L(\hat{y}_k, y_k)}{\partial \hat{y}_k} \cdot \textcolor{Blue}{\frac{\partial \hat{y}_k}{\partial B_{jk}}}
+        $$
+      \end{itemize}
+      \item Use the \textcolor{Purple}{chain rule} again for this: \textcolor{Blue}{$\frac{\partial \hat{y}_k}{\partial B_{jk}}$} derivative:
+      $$
+      \frac{\partial L(\hat{y}_k, y_k)}{\partial B_{jk}} = \frac{\partial L(\hat{y}_k, y_k)}{\partial \hat{y}_k} \cdot \textcolor{Blue}{\frac{\partial f_B(\theta_k)}{\partial \theta_k} \cdot \frac{\partial \theta_k}{\partial B_{jk}}}
+      $$
+      \begin{itemize}
+        \item Because $\theta$ is a linear function of $B$, and because $x$ does not depend on $B$:
+        $$
+        \frac{\partial \theta_k}{\partial B_{jk}} = x_j
+        $$
+        \item So general equation for $B$:
+        $$
+        \frac{\partial L(\hat{y}_k, y_k)}{\partial B_{jk}} = \frac{\partial L(\hat{y}_k, y_k)}{\partial \hat{y}_k} \cdot \textcolor{Blue}{\frac{\partial f_B(\theta_k)}{\partial \theta_k} \cdot x_j}
+        $$
+        \item To ease notation while computing the gradient with respect to $A$, let's define a new term $\delta^B$:
+        $$
+        \delta_k^B \doteq \frac{\partial L(\hat{y}_k, y_k)}{\partial \hat{y}_k} \cdot \frac{\partial f_B(\theta_k)}{\partial \theta_k}
+        $$
+      \end{itemize}
+    \end{enumerate}
+  \end{itemize}
+
+
+  \item \textbf{Gradient for $A$:} The main difference is that we have one extra chain rule step because the weights $A$ also affect $x$.
+  \begin{enumerate}
+    \item Take the \textcolor{Purple}{partial derivative} \uline{\textbf{of} the \textbf{loss function $L(\hat{y}_k, y_k)$}} \uline{\textbf{with respect to} the second set of \textbf{weights $A$}}, combined with the previous chain rule step $\delta_k^B$: $\frac{\partial L(\hat{y}_k, y_k)}{\partial A_{ij}}$
+    \begin{itemize}
+      \item We use the \textcolor{Purple}{chain rule}:
+      $$
+      \frac{\partial L(\hat{y}_k, y_k)}{\partial A_{ij}} = \delta_k^B \cdot \textcolor{Blue}{\frac{\partial \theta_k}{\partial A_{ij}}}
+      $$
+    \end{itemize}
+    \item Use the \textcolor{Purple}{chain rule} again for this: \textcolor{Blue}{$\frac{\partial \theta_k}{\partial A_{ij}}$} derivative:
+    $$
+    \frac{\partial L(\hat{y}_k, y_k)}{\partial A_{ij}} = \delta_k^B \cdot \textcolor{Blue}{B_{jk} \cdot \frac{\partial x_j}{\partial A_{ij}}}
+    $$
+    \item Using the \textcolor{Purple}{chain rule} again for \textcolor{Blue}{$\frac{\partial x_j}{\partial A_{ij}}$}, we get the derivative of \uline{$f_A(\psi)$ with respect to $\psi$} \textbf{times} the \uline{derivative of $\psi$ with respect to $A$}.
+    $$
+    \frac{\partial L(\hat{y}_k, y_k)}{\partial A_{ij}} = \delta_k^B \cdot B_{jk} \cdot \textcolor{Blue}{\frac{\partial f_A(\psi_j)}{\partial \psi_j} \cdot \frac{\partial \psi_j}{\partial A_{ij}}}
+    $$
+    \begin{itemize}
+      \item Because $\psi = sA$, we get:
+      $$
+      \frac{\partial \psi_j}{\partial A_{ij}} = s_i
+      $$
+      \item So general equation for $A$:
+      $$
+      \frac{\partial L(\hat{y}_k, y_k)}{\partial A_{ij}} = \delta_k^B \cdot B_{jk} \cdot \textcolor{Blue}{\frac{\partial f_A(\psi_j)}{\partial \psi_j} \cdot s_i}
+      $$
+      \item We can clean up this derivative by again, defining a term $\delta^A$.
+      $$
+      \delta_j^A = (B_{jk} \delta_k^B) \frac{\partial f_A(\psi_j)}{\partial \psi_j}
+      $$
+    \end{itemize}
+  \end{enumerate}
+
+  \item \textbf{Both gradients $A$ and $B$ can now be rewritten in a similar form:}
+  $$
+  \frac{\partial L(\hat{y}_k, y_k)}{\partial A_{ij}} = \delta_j^A s_i
+  $$
+  $$
+  \frac{\partial L(\hat{y}_k, y_k)}{\partial B_{jk}} = \delta_k^B x_j
+  $$
+  \begin{itemize}
+    \item They have a term $\delta$ that contains an \uline{error signal times their input}.
+  \end{itemize}
+\end{itemize}
+
+
+
+
+
+\begin{tcolorbox}[title={Backpropagation Algorithm (w. SGD)}]
+
+\textbf{Gor each datapoint $(s,y)$ in dataset $D$:}
+\begin{description}
+    \item $\;\;\;$ Compute delta for $B$: $\delta_k^B \doteq \frac{\partial L(\hat{y}_k, y_k)}{\partial \hat{y}_k} \cdot \frac{\partial f_B(\theta_k)}{\partial \theta_k}$
+    \item $\;\;\;$ Compute gradient for $B$: $\nabla_B^{jk} = \delta_k^B x_j$
+    \item $\;\;\;$ $B \leftarrow B - \alpha_B \nabla_B$
+\end{description}
+\tcblower
+\begin{description}
+    \item $\;\;\;$ Compute delta for $A$: $\delta_j^A = (B_{jk} \delta_k^B) \frac{\partial f_A(\psi_j)}{\partial \psi_j}$
+    \item $\;\;\;$ Compute gradient for $A$: $\nabla_A^{ij} = \delta_j^A s_i$
+    \item $\;\;\;$ $A \leftarrow A - \alpha_A \nabla_A$
+\end{description}
+\end{tcolorbox}
+
+Here we compute $\delta^A$ using $\delta^B$. Notice, that by computing the gradients of the end of the network first, we avoid recomputing the same terms for $A$, that were already computed for $\delta^B$. In fact, this is the main idea behind back propagation. It is simply gradient descent with this efficient strategy to compute gradients.
+
+This derivation and algorithm easily extend to deeper networks. The $\delta$ for the earlier layer is similarly computed recursively using the $\delta$ in the next layer.
+
+\bigskip
+
+\textbf{Optimization Strategies for NNs}
+\begin{itemize}
+  \item \textbf{Weight Initialization:}
+  \begin{itemize}
+    \item \textbf{Motivation:} Choice of $w$ starting points can play a big role in the performance of the neural network.
+    \item \textbf{Common Strategies:}
+    \begin{itemize}
+      \item \textbf{Random Sample}: One simple yet effective initialization strategy, is to randomly sample the initial weights from a normal distribution with small variance.
+      $$
+      w_{init} \sim \mathcal{N}(0,1)
+      $$
+      \begin{itemize}
+        \item This way, each neuron has a different output from other neurons within its layer. This provides a more diverse set of potential features. By keeping the variants small, we ensure that the output of each neuron is within the same range as its neighbors.
+        \item One downside to this strategy is that, \textcolor{red}{as we add more inputs to a neuron, the variance of the output grows}.
+      \end{itemize}
+      \item \textbf{Scaled Random Sample}: gets around the variance issue of 'Random Sample' by scaling the variance of the weights, by one over the square root of the number of inputs.
+      $$
+      w_{init} \sim \frac{\mathcal{N}(0,1)}{\sqrt{n_{inputs}}}
+      $$
+    \end{itemize}
+  \end{itemize}
+  \item \textbf{More sophisticated update mechanisms:}
+  \begin{itemize}
+    \item \textbf{Motivation:} More sophisticated update mechanisms can speed up neural network optimization.
+    \item \textbf{Common Strategies:}
+    \begin{itemize}
+      \item \textbf{Momentum (heavy-ball method)}: similar to the regular stochastic gradient descent update plus an extra term called the momentum $M$.
+      \begin{gather}
+        w_{t+1} \leftarrow w_t - a \nabla_w L(w_t) + \textcolor{blue}{\lambda M_t} \\
+        \textcolor{blue}{M_{t+1}} \leftarrow \textcolor{blue}{\lambda M_t} - \alpha \nabla_w L
+      \end{gather}
+      \begin{itemize}
+        \item The momentum term summarizes the history of the gradients using a decaying sum of gradients with decay rate Lambda.
+          \item[] $\;\;\; *$ If recent gradients have all been in similar directions, then we gained momentum in that direction. This means, we make a large step in that direction.
+          \item[] $\;\;\; *$ If recent updates have conflicting directions, then it kills the momentum. The momentum term will have little impact on the update and we will make a regular gradient descent step.
+      \end{itemize}
+      \item \textbf{Vector step-size adaption}: uses a separate step size for each weight in the network.
+      \begin{itemize}
+        \item Global scalar step size is problematic because it can result in updates that are too big for some weights and too small for other weights.
+      \end{itemize}
+    \end{itemize}
+  \end{itemize}
+\end{itemize}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\section{On-policy Control with Approximation}\label{on-policy-control-with-approximation}
+
+In this chapter we return to the control problem, now with parametric approximation of the action-value function $\hat{q}(s,a,w) \approx q_*(s,a)$, where $w \in \mathbb{R}^d$ is a finite-dimensional weight vector. So the feature representation has to represent actions as well.
+
+
+
+With \textbf{discrete action spaces} we can \uline{make feature representation to represent actions as well} by have a separate function approximator for each action. This can be accomplished by stacking the features.
+
+\begin{figure}[H]
+  \centering
+    \includegraphics[width=0.8\columnwidth]{images/stacked-feature-representation-eg.png}
+    \caption{Example stacked feature representation for 4 features (representing states), and 3 actions.}
+    \label{fig:stacked-feature-representation-eg}
+\end{figure}
+
+The action values are then the dot products between each segment of the weight vector and the feature vector.
+
+\begin{figure}[H]
+  \centering
+    \includegraphics[width=0.9\columnwidth]{images/stacked-feature-representation-eg2.png}
+    \caption{Example of calculating action-value for $s_0$ and $a_0$.}
+    \label{fig:stacked-feature-representation-eg2}
+\end{figure}
+
+For \textbf{continuous action spaces} or if you want to \textbf{generalize over actions}, the \uline{action can be passed as an input} like any other state variable.
+
+For NNs we would input both the state and the action to the network. There would only be one output. The approximate action value for that state and action.
+
+\begin{figure}[H]
+  \centering
+    \includegraphics[width=0.6\columnwidth]{images/action-values-with-ann.png}
+    \label{fig:action-values-with-ann}
+\end{figure}
+
+
+
+
+
+
+
+
+
+\subsection{Episodic Sarsa with Function Approximation}\label{episodic-sarsa-with-function-approximation}
+
+\textbf{Difference to tabular SARSA:}
+We \textbf{use} \uline{parameterized action value functions $\hat{q}(s,a,w)$} \textbf{for} the \uline{action-value estimates}. The update also changes to use the gradient to update the weights similar to semi-gradient TD.
+
+
+\begin{tcolorbox}[title={Episodic Semi-gradient Sarsa for Estimating $\hat{q} \approx q_*$}]
+
+\textbf{Input:} a differentiable action-value function parameterization $ \;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\; \hat{q}: \mathcal{S} \times \mathcal{A} \times \mathbb{R}^d \rightarrow \mathbb{R}$
+
+\textbf{Algorithm parameters:} $\alpha > 0$ \& small $\epsilon > 0$
+
+\textbf{Initialize:} value-function weights $w \in \mathbb{R}^d$ arbitrarily (e.g., $w=0$) \\
+
+\textbf{Loop for each episode:}
+\begin{description}
+   \item $\;\;\;$ $S, A \leftarrow$ initial state and action of episode (e.g., $\epsilon$-greedy)
+   \item $\;\;\;$ \textbf{Loop for each step of episode:}
+   \begin{description}
+     \item $\;\;\;$ Take action $A$ observe $R, S'$
+     \item $\;\;\;$ If $S'$ is terminal:
+     \begin{description}
+       \item $\;\;\;$ $w \leftarrow w + \alpha (R - \hat{q}(S,A,w))\nabla \hat{q}(S,A,w)$
+       \item $\;\;\;$ Go to next episode
+     \end{description}
+     \item $\;\;\;$ Choose $A'$ as a function of $\hat{q}(S',\cdot,w)$ (e.g. $\epsilon$-greedy)
+     \item $\;\;\;$ $w \leftarrow w + \alpha (R + \gamma \hat{q}(S',A',w) - \hat{q}(S,A,w))\nabla \hat{q}(S,A,w)$
+     \item $\;\;\;$ $S \leftarrow S'; A \leftarrow A'$
+   \end{description}
+\end{description}
+\end{tcolorbox}
+
+
+
+
+
+
+
+\subsection{Expected Sarsa with Function Approximation}\label{episodic-sarsa-with-function-approximation}
+
+
+\textbf{Sarsa into expected Sarsa:}
+
+\begin{itemize}
+  \item Recall Sarsa with function approximation:
+  $$
+  w \leftarrow w + \alpha (R_{t+1} + \gamma \hat{q}(S_{t+1},A_{t+1},w)- \hat{q}(S_t,A_t,w)) \nabla \hat{q}(S_t,A_t,w)
+  $$
+  \item Expected Sarsa with function approximation:
+  $$
+  w \leftarrow w + \alpha (R_{t+1} + \gamma \textcolor{blue}{\sum_{a'} \pi(a' | S_{t+1}) \hat{q}(S_{t+1}, a',w)} - \hat{q}(S_t,A_t,w)) \nabla \hat{q}(S_t,A_t,w)
+  $$
+  \begin{itemize}
+    \item We compute the action values from our weight vector for every action in the next state. Then we compute this expectation under the target policy.
+  \end{itemize}
+\end{itemize}
+
+
+
+
+
+
+
+
+
+\subsection{Exploration under Function Approximation}\label{exploration-under-function-approximation}
+
+\textbf{Optimistic initial values} $\rightarrow$ initializing the weights such that the resulting values are optimistic (largest possible return).
+\begin{itemize}
+  \item Can be \textcolor{red}{difficult in complicated functions} like neural networks.
+  \item Depending on how our features generalize, optimistic initial values \textcolor{red}{may not result in the same kind of systematic exploration we see in the tabular case}.
+\end{itemize}
+
+\textbf{$\epsilon$-greedy} is generally applicable and easy to use even in cases with non-linear function approximation.The only thing Epsilon greedy needs are the action value estimates, independent of how they are initialized or approximated.
+\begin{itemize}
+  \item However, Epsilon greedy is not a directed exploration method. It \uline{relies on randomness} to discover better actions near states followed by the current policy. It is therefore \textcolor{red}{not as systematic as exploration methods that rely on optimism}.
+\end{itemize}
+
+
+
+
+
+
+
+
+\subsection{Average Reward: A New Problem Setting for Continuing Tasks}\label{awerage-reward-problem-setting-for-continuing-tasks}
+
+
+\textbf{What:} Average Reward Formulation, a new way of formulating continuing problems.
+
+\textbf{Why:} In continuing tasks, we might be interested in \uline{extremely long horizon performance}.
+
+\textbf{How:} it cares equally about nearby and distant rewards.
+
+
+\begin{itemize}
+  \item \textbf{Average Reward Objective:}
+  $$
+  r(\pi) \doteq \lim_{h\to\infty} \frac{1}{h} \sum_{t=1}^h \mathbb{E}[R_t | S_0, A_{0:t-1} \sim \pi]
+  $$
+  \item More generally using the state visitation, $\mu$:
+  $$
+  r(\pi) = \sum_s \mu_\pi(s) \sum_a \pi(a | s) \sum_{s',r} p(s',r|s,a)r
+  $$
+  \begin{itemize}
+    \item This inner term is the expected reward in a state under policy $\pi$. The outer sum takes the expectation over how frequently the policy is in that state. Together, we get the expected reward across states (average reward for a policy).
+  \end{itemize}
+\end{itemize}
+
+
+
+Deciding which actions from a state are better? What we need are action values for this new setting?
+\begin{itemize}
+  \item \textbf{\textcolor{blue}{Differential Returns}:} In the average reward setting, returns are \textbf{defined} in terms of \uline{differences between \textcolor{blue}{rewards $R$} and the \textcolor{blue}{average reward $r(\pi)$}}.
+  \begin{gather*}
+  G_t = R_{t+1} - r(\pi) + R_{t+2} - r(\pi) + R_{t+3} - r(\pi) + ...
+  \end{gather*}
+  \item \textbf{represents} how much more reward the agent will receive from the current state and action compared to the average reward of the policy.
+  \item The differential return can only be used to compare actions if the same policy is followed on subsequent time steps. To compare policies, their average reward should be used instead.
+  \item Here $q_\pi(s,a) = \mathbb{E}_\pi[G_t | S_t = s, A_t = a]$ captures \uline{how much more reward the agent will get by starting in a particular state} than it would get on average over all states if it followed a fixed policy.
+  $$
+  q_\pi(s,a) = \sum_{s',r} p(s',r | s,a) (r-r(\pi) + \sum_{a'} \pi(a'|s') q_\pi(s',a'))
+  $$
+\end{itemize}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\section{*Off-policy Methods with Approximation}\label{off-policy-methods-with-approximation}
+
+The extension to function approximation turns out to be significantly different and harder for off-policy learning than it is for on-policy learning.
+
+In this chapter we explore the convergence problems, take a closer look at the theory of linear function approximation, introduce a notion of learnability, and then discuss new algorithms with stronger convergence guarantees for the off-policy case. In the end we will have improved methods, but the \textcolor{red}{theoretical results will not be as strong, nor the empirical results as satisfying, as they are for on-policy learning}.
+
+
+
+
+\subsection{Q-learning with Function Approximation}\label{qlearning-with-function-approximation}
+
+
+
+Q-learning is a special case of expected Sarsa
+
+
+\begin{itemize}
+  \item Recall, Expected Sarsa with function approximation:
+  $$
+  w \leftarrow w + \alpha (R_{t+1} + \gamma \textcolor{blue}{\sum_{a'} \pi(a' | S_{t+1}) \hat{q}(S_{t+1}, a',w)} - \hat{q}(S_t,A_t,w)) \nabla \hat{q}(S_t,A_t,w)
+  $$
+  \item Q-learning with function approximation:
+  $$
+  w \leftarrow w + \alpha (R_{t+1} + \gamma \textcolor{blue}{\max_{a'} \hat{q}(S_{t+1}, a',w)} - \hat{q}(S_t,A_t,w)) \nabla \hat{q}(S_t,A_t,w)
+  $$
+  \begin{itemize}
+    \item In Q-learning, the target policy is greedy with respect to the approximate action values. Computing the expectation under greedy policy is the same as computing the maximum action value.
+  \end{itemize}
+\end{itemize}
+
+
+
+
 
 
 
