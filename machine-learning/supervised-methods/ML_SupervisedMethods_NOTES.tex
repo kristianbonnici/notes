@@ -5,7 +5,7 @@
 \usepackage{float} % To use 'H' for figures
 \usepackage{graphicx} % to display images
 \usepackage[dvipsnames]{xcolor} % to use colours
-
+\usepackage{tcolorbox} % for creating boxes
 
 \usepackage[normalem]{ulem} % underlying that breaks at line end
 
@@ -59,7 +59,7 @@ These notes cover some of the key concepts in supervised learning. However it's 
 
 % Summary of Notation
 \nomenclature{$\log$}{Natural logarithm (also commonly written as $\ln, \log_e$)}
-\printnomenclature
+\printnomenclature\label{summary-of-notation}
 
 
 
@@ -1288,6 +1288,1541 @@ Various cross-validation schemes can be used to tackle the variance of the perfo
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+\newpage
+\part{Algorithms and Models}
+\newpage
+
+
+
+
+
+
+
+
+
+
+
+\section{Loss functions}\label{loss-functions}
+
+
+At its core, a loss function is a measure of how good your prediction model does in terms of being able to predict the expected outcome (or value).
+
+Loss functions measure how far an estimated value is from its true value. A loss function maps decisions to their associated costs. Loss functions are not fixed, they change depending on the task in hand and the goal to be met.
+
+Convexity is more crucial than the differentiability.
+Differentiability is also very usefull.
+
+
+
+
+
+
+
+\subsection{Minimizing loss functions}\label{minimizing-loss-functions}
+
+\subsubsection{Gradient of a Function (Calculus Refresh)}
+
+\textcolor{blue}{\textbf{Derivative}} is a way to show \textbf{instantaneous rate of change (slope of the tangent line at a point on a graph):} that is, the \uline{amount by which a function is changing at one given point}.
+\begin{itemize}
+  \item Common notations:
+  \begin{align*}
+    \frac{d y}{d x} & \text{, meaning the difference in $y$ divided by the difference in $x$} \\
+    f'(x) & \text{, meaning the derivative of function $f$ at point $x$}
+  \end{align*}
+  \item Important in optimization because the \textbf{zero derivatives} might indicate a \uline{minimum}, \uline{maximum}, or \uline{saddle point}.
+\end{itemize}
+
+\textcolor{blue}{\textbf{Gradient}} \textcolor{blue}{of} a \uline{scalar-valued differentiable function $f$ of several variables} \textcolor{blue}{is} the \uline{vector field (or vector-valued function) $\nabla f$} \textcolor{blue}{whose} \uline{value at a point $p$ is the vector whose components are the partial derivatives of $f$ at $p$}. More generally, it is a \textbf{vector that points in the direction in which the function grows the fastest}. value at a point
+
+\begin{itemize}
+  \item Common notations:
+  \begin{align*}
+    \nabla f & \text{, meaning the gradient of a function $f$} \\
+    -\nabla f & \text{, meaning the negative gradient of a function $f$}
+  \end{align*}
+\end{itemize}
+
+When working with gradient descent, you’re interested in the direction of the fastest decrease in the cost function. This direction is determined by the negative gradient, $-\nabla f$.
+
+
+
+\subsection{Loss functions for classification}\label{loss-functions-for-classification}
+
+See more \href{https://en.wikipedia.org/wiki/Loss_functions_for_classification}{here}.
+
+\textbf{Zero-One loss}
+\begin{itemize}
+  \item It assigns 0 to loss for a correct classification and 1 for an incorrect classification.
+  \item \textbf{Specs:}
+  \begin{itemize}
+    \item The main source of difficulty is the ”step function” shape of the zero-one loss function
+    \begin{itemize}
+      \item It is \textcolor{red}{non-differentiable} $\rightarrow$ \textcolor{red}{cannot optimize using gradient approaches}
+      \item It is \textcolor{red}{non-convex} $\rightarrow$ optimizer \textcolor{red}{susceptible to fall in local minima}
+    \end{itemize}
+  \end{itemize}
+\end{itemize}
+
+A convex loss function makes it easier to find a global optimum and to know when one is reached. There are multiple surrogate losses that are convex and differentiable upper bounds to zero-one loss.
+
+
+\textbf{Hinge loss} - used in Support vector machines
+
+\begin{itemize}
+  \item \textbf{Specs:}
+  \begin{itemize}
+    \item It is \textcolor{red}{non-differentiable}, but has a subgradient with respect to model parameters w
+  \end{itemize}
+\end{itemize}
+
+
+\textbf{Exponential loss} - used in Boosting
+
+
+\textbf{Logistic loss} - used in Logistic regression
+
+
+
+\begin{center}\rule{3in}{0.4pt}\end{center}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\section{Linear classification}\label{linear-classification}
+
+\textbf{What:} Performing \uline{classification based on the value of a linear combination of weights and features}.
+
+\textbf{Hypothesis class:}
+$$
+\mathcal{H} = \{x \rightarrow \text{sgn}\left(\sum_{j=1}^d w_j x_j + w_0\right) \;\;|\;\; w \in \mathbb{R}^d, w_0 \in \mathbb{R}\}
+$$
+
+\begin{itemize}
+  \item Consists of \textbf{linear classifiers} that \uline{map each example in one of the classes}:
+  $$
+  h(x) = \text{sgn}\left(\sum_{j=1}^d w_j x_j + w_0\right) = w^T x + w_0
+  $$
+  \begin{itemize}
+    \item \uline{$\text{sgn}(a)$ is the \textit{sign function}}. E.g. for binary classification:
+    $$
+    \text{sgn}(a) =
+    \begin{cases}
+      +1 & a \geq 0 \\
+      -1 & a < 0
+    \end{cases}
+    $$
+  \end{itemize}
+\end{itemize}
+
+
+\textbf{Attractive properties:}
+\begin{itemize}
+  \item They are \textcolor{Green}{fast to evaluate} and \textcolor{Green}{takes small space to store} ($O(d)$ time and space)
+  \item \textcolor{Green}{Easy to understand}: $|w_j|$ shows the importance of variable $x_j$ and its sign tells if the effect is positive or negative
+  \item Linear models have relatively \textcolor{Green}{low complexity} (e.g. $VCdim = d + 1$) so they can be \textcolor{Green}{\uline{reliably estimated from limited data}}
+  \item \textcolor{Orange}{Good practise is to try a linear model before something more complicated}
+\end{itemize}
+
+
+
+
+
+
+
+
+
+
+
+
+\subsection{Learning linear classifiers}\label{learning-with-linear-classificiers}
+
+
+\begin{tcolorbox}[colback=yellow!5,colframe=yellow!75!black,title={Change of representation}]
+For presentation is is convenient to subsume term $w_0$ into the weight vector and augment all inputs with a constant 1:
+$$
+w \Leftarrow
+\begin{bmatrix}
+w \\
+w_0
+\end{bmatrix} \;\;\;\;
+x \Leftarrow
+\begin{bmatrix}
+x \\
+1
+\end{bmatrix}
+$$
+
+The models have the same value for the discriminant:
+$$
+\begin{bmatrix}
+w \\
+w_0
+\end{bmatrix}^T
+\begin{bmatrix}
+x \\
+1
+\end{bmatrix}
+= w^T x + w_0
+$$
+\end{tcolorbox}
+
+
+\textbf{Checking for prediction errors:}
+
+\begin{itemize}
+  \item When the labels are $Y = \{-1, +1\}$ for a training example $(x, y)$ we have for $g(x) = w^T x$
+  $$
+  \text{sgn}(g(x)) =
+  \begin{cases}
+    y & \text{if $x$ is correctly classified} \\
+    -y & \text{if $x$ is incorrectly classified} \\
+  \end{cases}
+  $$
+  \item Alternative we can just \uline{multiply with the correct label} to \textbf{check for misclassification:}
+  $$
+  yg(x) =
+  \begin{cases}
+    \geq 0 & \text{if $x$ is correctly classified} \\
+    < 0 & \text{if $x$ is incorrectly classified} \\
+  \end{cases}
+  $$
+\end{itemize}
+
+\textbf{Margin:} the \uline{minimal distance of any training point to the hyperplane} (decision boundary).
+\begin{itemize}
+  \item \textbf{Geometric margin} for an example $x$ is given by $\gamma(x) = yg(x) / ||w||$
+  \item \textbf{Functional margin} (unnormalized version) for an example $x$ is given by $\gamma(x) = yg(x)$
+  \begin{figure}[H]
+    \centering  % Remember to centre the figure
+      \includegraphics[width=0.6\columnwidth]{images/margin.png}
+      \caption{Example where margin is the distance between the dotted lines and the thick line}
+      \label{fig:margin}
+  \end{figure}
+\end{itemize}
+
+
+
+
+
+
+
+
+\subsection{Perceptron}\label{perceptron}
+
+\textbf{What:} is a simple algorithm to train linear classifiers on linearly separable data.
+
+\textbf{How:} learns a hyperplane separating two classes:
+$$
+g(x) = w^T x
+$$
+
+\begin{itemize}
+  \item It processes incrementally a set of training examples
+  \begin{itemize}
+    \item \textbf{At each step}, it finds a training example $x_i$ that is incorrectly classified by the current model
+    \item It \textbf{updates the model} by adding the example to the current weight vector together with the label: $w^{(t+1)} \leftarrow w^{(t)} + y_i x_i$
+    \item This process is \textbf{continued until} incorrectly predicted training examples are not found
+  \end{itemize}
+\end{itemize}
+
+
+\textbf{Convergence:}
+\begin{itemize}
+  \item \textcolor{red}{Only if} the two classes are \textbf{linearly separable}
+  \item \textcolor{red}{Doesn't stop if} \textbf{non-separable training set}
+  \item \textbf{Theorem (Novikoff):}
+  \begin{itemize}
+    \item Will stop after at most $t \leq (\frac{2R}{\gamma})^2$ iterations
+    \begin{itemize}
+      \item $\gamma$: The \uline{largest achievable geometric margin so that all training examples have at least that margin}
+      \item R: The \uline{smallest radius of the d-dimensional ball that encloses the training data}
+    \end{itemize}
+    \begin{figure}[H]
+      \centering  % Remember to centre the figure
+        \includegraphics[width=0.6\columnwidth]{images/perceptron-convergence.png}
+        \label{fig:perceptron-convergence}
+    \end{figure}
+  \end{itemize}
+\end{itemize}
+
+
+
+
+
+
+
+\subsection{Logistic Regression}\label{logistic-regression}
+
+\textbf{What:} is a classification method that can be interpreted as maximizing odds ratios of conditional class probabilities.
+
+\begin{itemize}
+  \item It gets its name from the \textbf{logistic function} that \uline{maps a real valued input $z$ onto the interval $0 < \phi_{logistic}(z) < 1$}
+  $$
+  \phi_{logistic}(z) = \frac{1}{1 + \exp(-z)} = \frac{\exp(z)}{1+\exp(z)}
+  $$
+  \begin{figure}[H]
+    \centering  % Remember to centre the figure
+      \includegraphics[width=0.7\columnwidth]{images/logistic-function.png}
+      \label{fig:logistic-function}
+  \end{figure}
+\end{itemize}
+
+
+
+\begin{center}\rule{3in}{0.4pt}\end{center}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\section{Support Vector Machines (SVMs)}\label{support-vector-machines}
+
+\textbf{What:} classification methods based on the principle of \uline{margin maximization}. Commonly Performing \uline{nonlinear classification with kernel methods}.
+
+\textbf{How:} SVMs can be efficiently optimized using Stochastic gradient techniques specially developed for piecewise differentiable functions, such as the Hinge loss.
+
+\textbf{Main idea:}
+
+\begin{enumerate}
+  \item Start with \textbf{data} in a relatively \uline{low dimension}
+  \item Move the \textbf{data} into a \uline{higher dimension} (using Kernel methods)
+  \item Find a Support Vector Classifier that \uline{separates the higher dimensional data} into groups
+\end{enumerate}
+
+
+
+
+
+
+\subsection{Maximum margin hyperplane}\label{maximum-margin-hyperplane}
+
+\textbf{What:} Hyperplane $\mathbf{w}^T x = 0$ that lies furthest away from the training data (maximizing the minimum margin of the training examples):
+
+\begin{gather*}
+\text{Maximize } \gamma \\
+\text{w.r.t. variables } \mathbf{w} \in \mathbb{R}^d \\
+\text{Subject to } \frac{y_i \mathbf{w}^T \mathbf{x}_i}{||\mathbf{w}||} \geq \gamma \text{, for all } i = 1, ..., m
+\end{gather*}
+
+\bigskip
+
+\textbf{Why:} Support vector machines (SVM) are based on this principle.
+
+\textbf{Good properties:}
+
+\begin{itemize}
+  \item Robustness: small change in the training data will not change the classifications too much
+  \item Theoretically a large margin is tied to a low generalization error
+  \item It can be found efficiently through incremental optimization
+\end{itemize}
+
+\bigskip
+
+\textbf{Process:} How to maximize the margin:
+
+\begin{itemize}
+  \item Optimizing $\gamma$ does not give us a unique optimal weight vector $\mathbf{w}^*$
+  \item To get an unique answer, let us multiply the constraint on the geometric margin by $||\mathbf{w}||$ to obtain a an equivalent constraint on the functional margin
+  \begin{gather*}
+  \frac{y_i \mathbf{w}^T \mathbf{x}_i}{||\mathbf{w}||} \geq \gamma \\
+  y_i \mathbf{w}^T \mathbf{x}_i \geq \gamma ||\mathbf{w}|| \\
+  \end{gather*}
+  \begin{itemize}
+    \item Now fix the functional margin to 1: $\gamma ||\mathbf{w}|| = 1$ which gives $\gamma = \frac{1}{||\mathbf{w}||}$
+    \item To maximize $\gamma$, we should minimize $||\mathbf{w}||$ with the constraint of having functional margin of at least 1
+  \end{itemize}
+\end{itemize}
+
+
+\bigskip
+
+
+\textbf{Hard margin Support Vector Machine (SVM)} solves the margin maximization as follows:
+
+\begin{gather*}
+\text{Minimize } \frac{1}{2} ||\mathbf{w}||^2 \\
+\text{w.r.t. variables } \mathbf{w} \in \mathbb{R}^d \\
+\text{Subject to } y_i \mathbf{w}^T \mathbf{x}_i \geq 1 \text{, for all } i = 1, ..., m
+\end{gather*}
+
+\begin{itemize}
+  \item We are minimizing the half of the squared norm of the weight vector, which gives the same answer as minimizing the norm, but easier to optimize
+  \item This is \textbf{equivalent of} \uline{finding the maximal geometric margin} over the same data
+\end{itemize}
+
+The so called hard margin support-vector machine \textcolor{red}{assumes linearly separable data}
+
+
+
+
+
+
+
+\subsection{Soft-Margin SVM}\label{soft-margin-svm}
+
+\textbf{What:} relaxed margin constraints
+
+\textbf{Why:} allows non-separable data
+
+\textbf{How:} To allow non-separable data, we allow the functional margin $y_i \mathbf{w}^T \mathbf{x}_i$ of some data points $\mathbf{x}_i$ to be smaller than 1 by a slack variable $\xi \geq 0$.
+
+\begin{itemize}
+  \item Relaxed margin constraint:
+  $$
+  y_i \mathbf{w}^T \mathbf{x}_i \geq 1 -\xi \;,\;\; (\xi \geq 0)
+  $$
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+  \includegraphics[width=0.6\columnwidth]{images/slack-variables-for-soft-margin-classifiers.png}
+  \caption{Examples of slack variables for soft margin classifiers.}
+  \label{fig:slack-variables-for-soft-margin-classifiers}
+\end{figure}
+\begin{itemize}
+  \item $\xi_i = 0$ corresponds to having large enough margin > 1
+  \item $\xi_i > 1$ corresponds to negative margin, misclassified point
+  \item The set of support vectors includes all $x_i$ that have non-zero slack $\xi_i$ (functional margin $y_i \mathbf{w}^T \mathbf{x}_i \leq 1$)
+\end{itemize}
+
+
+
+
+\textbf{Soft margin Support Vector Machine (SVM)} solves the margin maximization as follows:
+
+\begin{equation*}
+\begin{aligned}
+& \text{minimize}
+& & \frac{1}{2} ||\mathbf{w}||^2 + \overbrace{\frac{C}{m} \sum_{i=1}^m \xi_i}^{\substack{\text{avg. slack} \\ \text{(penalty)}}} \\
+& \text{w.r.t. variables}
+& & \mathbf{w}, \xi \\
+& \text{subject to}
+& & y_i \mathbf{w}^T \mathbf{x}_i \geq 1 - \xi_i \text{, for all } i = 1, ..., m \\
+&&& \xi_i \geq 0 \text{, for all } i = 1, ..., m
+\end{aligned}
+\end{equation*}
+\begin{itemize}
+  \item The coefficient $C > 0$ controls the balance between model complexity (low $C$) and empirical error (high $C$)
+\end{itemize}
+
+
+\textbf{We can rewrite the optimization problem in terms of \textcolor{blue}{Hinge loss} as}
+
+$$
+\min_\mathbf{w} \frac{1}{m} \sum_{i=1}^m \textcolor{blue}{\mathcal{L}_{Hinge}(\mathbf{w}^T \mathbf{x}_i, y_i)} + \frac{\lambda}{2} ||\mathbf{w}||^2
+$$
+
+\begin{itemize}
+  \item The parameter $\lambda = \frac{1}{C}$ controls the balance between model complexity (low $C$) and empirical error (high $C$).
+\end{itemize}
+
+
+
+
+
+
+\subsubsection{Loss functions: Hinge loss}\label{hinge-loss}
+
+
+We can interpret the soft-margin SVM in terms of minimization of a loss function.
+
+\begin{itemize}
+  \item Observe the relaxed margin constraint:
+  $$
+  y_i \mathbf{w}^T \mathbf{x}_i \geq 1 - \xi_i
+  $$
+  \item We get so called \textbf{\textcolor{blue}{Hinge loss}} by rearranging the same as:
+  \begin{align*}
+    \xi_i &\geq 1 - y_i \mathbf{w}^T \mathbf{x}_i \;,\;\; (\xi \geq 0) \\
+    \xi_i &\geq \max(1 - y_i \mathbf{w}^T \mathbf{x}_i, 0) \\
+    \textcolor{blue}{L_{Hinge}(y, \mathbf{w}^T, \mathbf{x})} &\geq \max(1 - y_i \mathbf{w}^T \mathbf{x}_i, 0)
+  \end{align*}
+  \begin{itemize}
+    \item For $f(\mathbf{x}) = \mathbf{w}^T \mathbf{x}$:
+    $$
+    \textcolor{blue}{L_{Hinge}(y, f(\mathbf{x}))} \geq \max(1 - y f(\mathbf{x}), 0)
+    $$
+  \end{itemize}
+\end{itemize}
+
+
+\bigskip
+
+The soft-margin SVM corresponds to a Quadratic program (QP). A QP is a convex optimization problem (with a unique optimum). When data is small, QP solvers in optimization libraries can be used to solve the soft-margin SVM problem.
+
+\bigskip
+
+On big data, a \textcolor{blue}{stochastic gradient descent procedure} is a good option. \textbf{Rewrite the regularized learning problem as an average:}
+
+$$
+J(\mathbf{w}) = \frac{1}{m} \sum_{i=1}^m J_i(\mathbf{w}) = \frac{1}{m} \sum_{i=1}^m (\mathcal{L}_{Hinge}(\mathbf{w}^T \mathbf{x}_i, y_i) + \frac{\lambda}{2}||\mathbf{w}||^2)
+$$
+
+However, Hinge loss is not differentiable at 1 (because of the ’Hinge’ at 1), so cannot simply compute the gradient $\nabla J_i (\mathbf{w})$
+\begin{itemize}
+  \item We can differentiate the linear pieces of the loss separately:
+  $$
+  L_{Hinge}(\mathbf{w}^T \mathbf{x}_i, y_i) =
+  \begin{cases}
+  1 - y_i \mathbf{w}^T \mathbf{x}_i,     & \text{if } y_i \mathbf{w}^T \mathbf{x}_i < 1 \\
+  0  & \text{if } y_i \mathbf{w}^T \mathbf{x}_i \geq 1
+  \end{cases}
+  $$
+  \item We get:
+  $$
+  \nabla L_{Hinge}(\mathbf{w}^T \mathbf{x}_i, y_i) =
+  \begin{cases}
+  - y_i \mathbf{x}_i,     & \text{if } y_i \mathbf{w}^T \mathbf{x}_i < 1 \\
+  0  & \text{if } y_i \mathbf{w}^T \mathbf{x}_i > 1
+  \end{cases}
+  $$
+  \begin{itemize}
+    \item At $\mathbf{w}^T \mathbf{x}_i = 1$, the function is not differentiable but we can choose 0 as the value, since the Hinge loss is zero so no update is needed to decrease loss.
+  \end{itemize}
+  \item To find the update direction we express $J_i(w)$ as a piecewise differentiable function:
+  $$
+  J_i(w) = L_{Hinge}(\mathbf{w}^T \mathbf{x}_i, y_i) + \frac{\lambda}{2}||\mathbf{w}||^2 =
+  \begin{cases}
+  1 - y_i \mathbf{w}^T \mathbf{x}_i + \frac{\lambda}{2}||\mathbf{w}||^2,     & \text{if } y_i \mathbf{w}^T \mathbf{x}_i < 1 \\
+  0 + \frac{\lambda}{2}||\mathbf{w}||^2 & \text{if } y_i \mathbf{w}^T \mathbf{x}_i \geq 1
+  \end{cases}
+  $$
+  \item Computing the derivatives piecewise gives the gradient:
+  $$
+  \nabla J_i (\mathbf{w}) =
+  \begin{cases}
+  - y_i \mathbf{x}_i + \lambda \mathbf{w},     & \text{if } y_i \mathbf{w}^T \mathbf{x}_i < 1 \\
+  0 + \lambda \mathbf{w} & \text{if } y_i \mathbf{w}^T \mathbf{x}_i \geq 1
+  \end{cases}
+  $$
+  \item Update direction is the negative gradient $- \nabla J_i (\mathbf{w})$
+\end{itemize}
+
+
+\begin{tcolorbox}[title={Stochastic gradient descent algorithm for soft-margin SVM}]
+
+  \textbf{Initialize:} weights $\mathbf{w}$ (e.g., to $0$)
+
+  \textbf{Repeat:}
+  \begin{description}
+    \item $\;\;\;$ Draw a training example $(x_i, y_i)$ uniformly at random
+    \item $\;\;\;$ Compute the update direction corresponding to the training example:
+    $$
+    \nabla J_i (\mathbf{w}) =
+    \begin{cases}
+    - y_i \mathbf{x}_i + \lambda \mathbf{w},     & \text{if } y_i \mathbf{w}^T \mathbf{x}_i < 1 \\
+    0 + \lambda \mathbf{w} & \text{if } y_i \mathbf{w}^T \mathbf{x}_i \geq 1
+    \end{cases}
+    $$
+    \item $\;\;\;$ Determine a stepsize $\eta$
+    \item $\;\;\;$ Update $\mathbf{w} = \mathbf{w} - \eta \nabla J_i(\mathbf{w})$
+  \end{description}
+  \textbf{until stopping criterion satisfied}
+
+  \textbf{Output:} weights $\mathbf{w}$
+\end{tcolorbox}
+
+
+
+
+
+
+
+
+\subsection{Dual Soft-Margin SVM}\label{dual-soft-margin-svm}
+
+\textbf{What:} Dual representation of SVM allows the \uline{use of kernel functions}.
+
+\textbf{Why:} Enables \uline{nonlinear classification}.
+
+\textbf{How:} It can be shown theoretically that the \textbf{optimal hyperplane} of the soft-margin SVM has a \uline{\textbf{\textcolor{blue}{dual representation}} as the linear combination of the training data}:
+$$
+\mathbf{w} = \sum_{i=1}^m \alpha_i y_i \mathbf{x}_i
+$$
+
+\begin{itemize}
+  \item The \textbf{coefficients}, also called the \textbf{\textcolor{blue}{dual variables}} are non-negative \textcolor{blue}{$\alpha_i \geq 0$}
+  \begin{itemize}
+    \item if $x_i$ is a support vector, \textcolor{blue}{$\alpha_i > 0$}
+    \item else \textcolor{blue}{$\alpha_i = 0$}
+  \end{itemize}
+\end{itemize}
+
+
+A dual optimization problem for the soft-margin SVM with kernels is given by
+
+\begin{equation*}
+\begin{aligned}
+& \text{maximize}
+& & OBJ(\alpha) = \sum_{i=1}^m \alpha_i - \frac{1}{2} \sum_{i=1}^m \sum_{j=1}^m \alpha_i \alpha_j y_i y_j \kappa(\mathbf{x}_i, \mathbf{x}_j) \\
+& \text{w.r.t. variables}
+& & \alpha \in \mathbb{R}^m \\
+& \text{subject to}
+& & 0 \leq \alpha_i \leq C/m \text{, for all } i = 1, ..., m
+\end{aligned}
+\end{equation*}
+
+\begin{itemize}
+  \item It is a QP with variables $\alpha_i$, again with a unique optimum
+  \item The data only appears through the kernel function $\kappa(\mathbf{x}_i, \mathbf{x}_j) = \mathbf{x}_i^T \mathbf{x}_j$
+\end{itemize}
+
+
+
+
+\begin{center}\rule{3in}{0.4pt}\end{center}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\section{Kernel methods}\label{Kernel-methods}
+
+
+\textbf{Key characteristics:}
+
+\begin{itemize}
+  \item \textbf{Embedding:} Inputs $\mathbf{x} \in X$ from some input space $X$ are embedded into a \textit{feature space} $F$ via a feature map $\phi: X \to F$.
+  \begin{itemize}
+    \item $\phi$ maybe highly non-linear and $F$ potentially very high-dimensional vector space.
+  \end{itemize}
+  \item \textbf{Linear models:} are built for the the patterns in the feature space (typically $\mathbf{w}^T \phi(\mathbf{x})$); efficient \uline{to find the optimal model, convex optimization}.
+  \item \textbf{Kernel trick:} Algorithms work with kernels, inner products of feature vectors $\kappa(\mathbf{x}, \mathbf{z}) = \sum_j \phi_j(\mathbf{x}) \phi_j(\mathbf{z})$ rather than the explicit features $\phi(\mathbf{x})$; \uline{side-steps the efficiency problems of high-dimensionality}.
+  \item \textbf{Regularized learning:} To \uline{avoid overfitting}, large feature weights are penalized, separation by large margin is favoured.
+\end{itemize}
+
+
+
+
+
+
+
+\begin{center}\rule{3in}{0.4pt}\end{center}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\section{Neural Networks (NNs)}\label{Neural-networks}
+
+
+\subsection{Perceptron (as building block of NNs)}\label{Perceptron-as-building-block-of-NNs}
+
+
+\begin{figure}[H]
+  \centering
+    \includegraphics[width=0.6\columnwidth]{images/perceptron.jpeg}
+    \caption{Illustration of a single leayer perceptron.}
+    \label{fig:perceptron}
+\end{figure}
+
+
+\subsection{Perceptrons as Logical Operators}\label{Perceptrons-as-Logical-Operators}
+
+\textbf{Motivation:} Showcasing the expressive power of neural networks.
+
+\textbf{AND Perceptron:}
+\begin{itemize}
+  \item Set the bias $w_0 = -1.5$ and the weights $w_1 = w_2 = 1$
+  \item Now the function $w_1x_1 + w_2x_2 + w_0 > 0$ if and only if $x_1 = x_2 = 1$
+  \item The function is a hyperplane (line) that linearly separates the point (1, 1) from the other three possible input combinations
+  \begin{figure}[H]
+    \centering
+      \includegraphics[width=0.9\columnwidth]{images/and-perceptron.png}
+      \caption{Illustration of AND perceptron.}
+      \label{fig:and-perceptron}
+  \end{figure}
+\end{itemize}
+
+\textbf{OR Perceptron:}
+\begin{itemize}
+  \item Set the bias $w_0 = -0.5$ and the weights $w_1 = w_2 = 1$
+  \item Now the function $w_1x_1 + w_2x_2 + w_0 > 0$ if and only if $x_1 = 1$ or $x_2 = 1$
+  \item The function is a hyperplane separating the point (0, 0) from the other input combinations
+  \begin{figure}[H]
+    \centering
+      \includegraphics[width=0.9\columnwidth]{images/or-perceptron.png}
+      \caption{Illustration of OR perceptron.}
+      \label{fig:or-perceptron}
+  \end{figure}
+\end{itemize}
+
+\textbf{XOR Multi-Layer Perceptron (MLP):} The exclusive OR, or XOR operator cannot be represented by a single-leyer perceptron, as XOR function is not linearly separable. XOR can be computed by a Multi-Layer Perceptron.
+$$
+XOR(x_1,x_2) = (x_1 \text{ AND NOT}(x_2)) \textbf{ OR } (\text{NOT}(x_1) \text{ AND } x_2)
+$$
+\begin{itemize}
+  \item The first layer computes two hyperplanes:
+  \begin{itemize}
+    \item $z_1 = x_1 - x_2 - 0.5 > 0$ if and only if $(x_1 \text{ AND NOT}(x_2))$
+    \item $z_2 = -x_1 + x_2 - 0.5 > 0$ if and only if $\text{NOT}(x_1) \text{ AND }(x_2))$
+  \end{itemize}
+  \item The second layer computes a single hyperplane implementing the OR $z_1 + z_2 - 0.5 > 0$ if and only if $z_1$ OR $z_2$ is true
+  \begin{figure}[H]
+    \centering
+      \includegraphics[width=0.9\columnwidth]{images/xor-perceptron.png}
+      \caption{Illustration of XOR perceptron.}
+      \label{fig:xor-perceptron}
+  \end{figure}
+\end{itemize}
+
+
+
+
+
+
+
+\begin{center}\rule{3in}{0.4pt}\end{center}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  \newpage
+  \part{Additional learning models}
+  \newpage
+
+
+
+
+
+
+
+
+
+\section{Feature Engineering and Selection}\label{feature-engineering-and-selection}
+
+\textbf{Why:} It can be argued that good data representation is actually more important than the choice of the learning algorithm.
+
+\textbf{How:} There are variety of \textbf{\textcolor{blue}{feature engineering techniques}}:
+
+\begin{itemize}
+  \item \textbf{\textcolor{blue}{Feature transformation:}} convert the features in a form that allows learning better
+  \item \textbf{\textcolor{blue}{Feature selection:}} aim to reduce the number of input variables that are used by the predictor
+  \item \textbf{\textcolor{blue}{Feature generation:}} build new features by combining the original ones either manually (using prior knowledge) or by learning representations by optimizing some objective
+\end{itemize}
+
+\subsection{Feature transformation}\label{feature-transformation}
+
+\textbf{Why:} to make the \uline{distribution of the input variables to better represent the domain knowledge} \textbf{or} to make the \uline{data more suitable to the learning algorithm}
+
+\textbf{Objectives:} \uline{better error rates} \textbf{or} \uline{faster optimization}
+
+\textbf{How:} Some \textbf{common \textcolor{blue}{feature transformations}:} (let $f=(f_1,...,f_m)$ denote the values of a single variable/feature in the dataset)
+\begin{itemize}
+  \item \textbf{\textcolor{blue}{Centering}:}
+  \begin{gather*}
+    f_i' = f_i - \bar{f} \\ \\
+    \textbf{Where: } \textbf{$\bar{f}$: } \text{mean of variable}
+  \end{gather*}
+  \begin{itemize}
+    \item \textbf{Rationale:} learning algorithms generally learn from the variance of the data, not the mean. Centering \uline{makes the variance more obvious}.
+  \end{itemize}
+  \item \textbf{\textcolor{blue}{Standardization (Z-score Normalization)}:}
+  \begin{gather*}
+    f_i' = \frac{f_i - \bar{f}}{\sqrt{\text{var}(f)}} \\ \\
+    \textbf{Where: } \text{$\text{var}(f)$: } \text{variance of variable}
+  \end{gather*}
+  \begin{itemize}
+    \item \textbf{Rationale:} making all variables have zero mean and unit variance may \uline{help if the raw variables have very different scales}.
+  \end{itemize}
+  \item \textbf{\textcolor{blue}{Unit range (min-max scaling)}:}
+  \begin{gather*}
+    f_i' = \frac{f_i - f_{min}}{f_{max}-f_{min}}
+  \end{gather*}
+  \begin{itemize}
+    \item \textbf{Rationale:} unit range $[0,1]$ is useful \uline{if the variable's relative position in the observed range is important}.
+  \end{itemize}
+  \item \textbf{\textcolor{blue}{Clipping}:}
+  \begin{gather*}
+    f_i' = \text{sgn}(f_i) \text{min}(b, |f_i|) \text{, for some threshold } b > 0 \\ \\
+    \textbf{Where: } \text{$\text{sgn}(f_i)$: } \text{sign function}
+  \end{gather*}
+  \begin{itemize}
+    \item \textbf{Rationale:} \uline{if certain large values are known to be non-informative}, clipping may make learning easier (clipping small values: use max instead of min).
+  \end{itemize}
+  \item \textbf{\textcolor{blue}{Logarithmic transformation}:}
+  \begin{gather*}
+    f_i' = \text{log}(b + f_i) \text{, for some constant } b > 0
+  \end{gather*}
+  \begin{itemize}
+    \item \textbf{Rationale:} log-transform can be used to \uline{emphasize small differences between small values} (e.g. 0 vs. 1) if they are more important than small differences between large values (e.g. 1000 vs. 1001).
+  \end{itemize}
+  \item \textbf{\textcolor{blue}{Sigmoid transformation}:}
+  \begin{gather*}
+    f_i' = \frac{1}{1 + \exp{(b f_i)}}
+  \end{gather*}
+  \begin{itemize}
+    \item \textbf{Rationale:} Compresses the high absolute values heavily, \uline{"soft version" of clipping}.
+  \end{itemize}
+  \item \textbf{\textcolor{blue}{Normalization of feature vectors (Unit-Length Scaling)}:}
+  \begin{gather*}
+    x' = \frac{x}{||x||} \\ \\
+    \textbf{Where: } \text{$x$: } \text{is the feature vector} \\
+    ||x|| = \text{ Euclidean length of the feature vector}
+  \end{gather*}
+  \begin{itemize}
+    \item \textbf{Rationale:} useful \uline{if the relative values of the variables for a single example are important rather than the absolute values}, e.g. if large object produces large average values for all features but the class of the object does not depend on its size.
+  \end{itemize}
+\end{itemize}
+
+In general, \uline{several transformations are used to establish a desired effect}, e.g. log-transform + normalization
+
+
+
+
+
+
+
+
+\subsection{Feature selection}\label{feature-selection}
+
+
+\textbf{Why:} Potential benefits:
+\begin{itemize}
+  \item \textbf{Facilitating data visualization and \textcolor{Green}{interpretation}:} a model with fewer features is easier to explain
+  \item \textbf{Reducing \textcolor{Green}{time and space} requirements of training models:} less data to store and compute over
+  \item \textbf{Improving the \textcolor{Green}{predictive performance}:} a small subset of variables is less likely to overfit
+\end{itemize}
+
+\textbf{How:} \textcolor{blue}{Exhaustive search} approach goes through all $2^d - 1$ feature subsets and would give us the \textcolor{Green}{optimal feature subset}, however it is \textcolor{red}{prohibitively expensive} unless d (the set of features) is very small.
+
+In general, \textbf{\textcolor{blue}{feature selection approaches}} aim to avoid the exponential complexity of checking each feature subset:
+
+\begin{itemize}
+  \item \textbf{\textcolor{blue}{Variable ranking ("filtering" approach)}:} assess the \uline{usefulness of each input feature individually} in a preprocessing step prior to learning, select a subset of most useful features
+  \item \textbf{\textcolor{blue}{Variable subset selection}:} generate \uline{several different feature subsets} generally by some greedy search strategy, train a model with each subset, select the subset with the best predictive performance
+  \item \textbf{\textcolor{blue}{Embedded methods}:} the learning algorithm \uline{performs variable selection}
+\end{itemize}
+
+
+
+\subsubsection{Variable ranking ("filtering" approach)}\label{variable-ranking}
+
+
+\textbf{Pros and cons:}
+\begin{itemize}
+  \item[\textcolor{Green}{+}] reasonably efficient:
+  \begin{itemize}
+    \item computation of the \textbf{feature scores} can be done in $O(md)$ for correlation and $O(dm \log_2 m)$ time for the decision stump (the dominating cost is sorting the values of the feature $j$ in $O(m \log_2 m)$ time)
+    \item The \textbf{ranking of the features} given the scores also requires sorting the features in $O(d \log d)$ time.
+  \end{itemize}
+  \item[\textcolor{red}{-}] limited by two issues:
+  \begin{itemize}
+    \item \textbf{Features} that are not correlating with the output \textbf{(not selected)} \textcolor{red}{may still be useful when combined by other variables}
+    \item As the \textbf{filtering is made independently of the predictive model} that will use the selected features, the \textcolor{red}{selected subset might not be optimal}
+  \end{itemize}
+\end{itemize}
+
+\textbf{A generic variable ranking procedure:}
+\begin{itemize}
+  \item Compute a score $s_j$ for each input variable $j$ using some \textbf{scoring criterion}
+  \item Sort the variables in descending order of $s_j$
+  \item Select a subset of the most highly ranking variables, e.g. by top $k$ variables or all variables exceeding a score threshold $\theta$ ($k$ or $\theta$ generally decided by the user)
+\end{itemize}
+
+\subsubsubsection{Regression-based scoring criterion : Pearson correlation}\label{regression-based-scoring-criterion}
+
+\begin{itemize}
+  \item Assume a dataset $S = \{(x_i,y_i)\}^m_{i=1}$, where $x_i = (x_{i1},...,x_{id})^T$, and $y_i \in R$
+  \item (Empirical) Pearson correlation of the $j$'th feature and the output is given by
+  \begin{gather*}
+    r_j = \frac{\sum_{i=1}^m (x_{ij}-\bar{x}_j)(y_i-\bar{y})}{\sqrt{\sum_i (x_{ij}-\bar{x}_j)^2} \sqrt{\sum_i (y_i - \bar{y})^2}} \\ \\
+    \textbf{Where: } \\
+    \bar{x}_j = \frac{1}{m} \sum_{i=1}^m x_{ij} \text{ denotes the mean of the $j$'th feature in the dataset} \\
+    \bar{y} = \frac{1}{m} \sum_{i=1}^m y_i \text{ denotes the mean of the output variable}
+  \end{gather*}
+  \begin{itemize}
+    \item $r_j$ ranges from $+1$ (perfect correlation) to $-1$ (perfect anti-correlation)
+    \item Pearson correlation has a natural interpretation in terms of linear regression. $r_j$ is the optimal regression co-efficient in a univariate linear model $y = rx + b$ that has the smallest mean squared error on the data
+    $$
+    r_j = \argmin_{r \in \mathbb{R}} \frac{1}{m} \sum_{i=1}^m (rx_{ij} + b - y_i)^2
+    $$
+  \end{itemize}
+  \item For feature scoring, we use $s_j = r_j^2$ to allow selection of both anti-correlated and correlated features
+  \begin{itemize}
+    \item $r_j^2$ is the fraction of the variance of the output variable explained by the linear model
+    \item $r_j^2 = 0$ means that the $j$'th feature alone does not explain any of the variance of the output
+  \end{itemize}
+\end{itemize}
+
+
+\subsubsubsection{Classification-based scoring criterion}\label{classification-based-scoring-criterion}
+
+\begin{itemize}
+  \item Given $y \in \{-1, +1\}$, a simple approach of to consider a model
+  $$
+  y = \text{sgn}(ax + \theta)
+  $$
+  \begin{itemize}
+    \item Where $a \in \{-1, +1\}$ and $\theta \in \mathbb{R}$ is set to optimize the empirical error
+    $$
+    [a_j, \theta_j] = \argmin_{a \in \{-1, +1\}, \theta \in \mathbb{R}} \sum_{i=1}^m 1_{\text{sgn}(ax_{ij}+\theta) \neq y_i}
+    $$
+  \end{itemize}
+  \item For feature scoring, we can use the accuracy (or some other evaluation metrics for classification):
+  $$
+  r_j = 1 - \frac{1}{m} \sum_{i=1}^m 1_{\text{sgn}(ax_{ij}+\theta) \neq y_i}
+  $$
+\end{itemize}
+
+
+
+
+\subsubsection{Variable subset selection}\label{variable-subset-selection}
+
+\textbf{What (recap):} generate \uline{several different feature subsets} generally by some greedy search strategy, train a model with each subset, select the subset with the best predictive performance.
+
+\subsubsubsection{Wrapper approach}\label{wrapper-approach}
+
+\textbf{How:} The wrapper approach to variable selection \uline{uses the same learning algorithm that is used for the final model to evaluate variable subsets}
+\begin{itemize}
+  \item It iterates two steps:
+  \begin{enumerate}
+    \item Generate a variable subset (by some fixed procedure)
+    \item Evaluate the subset by training a model with the subset
+  \end{enumerate}
+\end{itemize}
+
+\textbf{\textcolor{blue}{Variable scoring} in wrapper approach:}
+\begin{itemize}
+  \item In a wrapper algorithm it is natural to use the \uline{risk of the hypothesis} (either on training or validation data) as the variable scoring criterion
+  \item This involves training and testing a hypothesis for each variable subset considered
+  \begin{itemize}
+    \item[\textcolor{red}{-}] \textcolor{red}{Computationally heavier than the filter approach}
+    \item[\textcolor{Green}{+}] But can find \textcolor{Green}{better variable subsets than the filter approach}
+  \end{itemize}
+\end{itemize}
+
+\textbf{\textcolor{blue}{Two generic procedures} for generating a subset:}
+\begin{itemize}
+  \item \textbf{\textcolor{blue}{Forward selection}:} grow the set of selected variables by iteratively
+  \item \textbf{\textcolor{blue}{Backward elimination}:} start from set of all variables and iteratively eliminate variables until a given stopping criterion is fulfilled
+  \item Also more thorough search strategies can be used (best-first,
+branch-and-bound, etc.)
+\end{itemize}
+
+\subsubsubsubsection{Greedy forward selection}\label{greedy-forward-selection}
+
+\textbf{How:}
+\begin{itemize}
+  \item We \textbf{add a variables iteratively}, choosing in each step a \uline{variable that gives the maximum improvement}
+  \item The variables that have been chosen to the model are not removed, even if they become redundant \textbf{(no back-tracking)}
+  \item For each iteration, models are trained for every candidate variable to be added
+  \item In total $O(Kd)$ models are trained where $K$ is the upper bound for the number of variables selected
+\end{itemize}
+
+
+\begin{tcolorbox}[title={Greedy forward selection pseudo-code}]
+
+  \textbf{Input:} Dataset $S = \{(x_i,y_i)\}_{i=1}^m$
+
+  \textbf{Input:} Maximum number of variables $K$
+
+  \textbf{Initialize:} $J \leftarrow \emptyset, s_J \text{ (score)} \leftarrow 0; k \leftarrow 0$
+
+  \textbf{Repeat:}
+  \begin{description}
+    \item $\;\;\;$ \textbf{for $j \in \{1,..., d\} \setminus J$} (all except the ones that are in $J$ already):
+    \begin{description}
+      \item $\;\;\;$ Train a model $f_{J \cup j}$ with input variable $J \cup j$
+      \item $\;\;\;$ $s_{J \cup j} \leftarrow$ accuracy of the model $f_{J \cup j}$ (training set or validation set)
+    \end{description}
+    \item $\;\;\;$ Select the best variable: $j^* \leftarrow \argmax_{j \in \{1,..., d\} \setminus J} s_{J \cup j}$
+    \item $\;\;\;$ \textbf{if $s_{J \cup j^*} > s_J$:}
+    \begin{description}
+      \item $\;\;\;$ $J \leftarrow J \cup j^*$
+      \item $\;\;\;$ $k \leftarrow k+1$
+    \end{description}
+    \item $\;\;\;$ \textbf{else:}
+    \begin{description}
+      \item $\;\;\;$ stop $\leftarrow TRUE$
+    \end{description}
+    \item $\;\;\;$ \textbf{end if:}
+    \begin{description}
+      \item $\;\;\;$ $k = K$ or stop
+    \end{description}
+  \end{description}
+
+  \textbf{Output:} A subset of selected variables $J \subset \{1,..., d\}$
+\end{tcolorbox}
+
+
+
+\subsubsubsubsection{Backward elimination}\label{backward-elimination}
+
+\textbf{How:}
+\begin{itemize}
+  \item We \textbf{starts from the full set of input variables}
+  \item In each stage, the input variable whose elimination has the best effect on the model is eliminated
+  \begin{itemize}
+    \item Largest increase or smallest decrease of accuracy on validation set
+  \end{itemize}
+  \item Accuracy on validation set generally used, since it will generally have an optimum for some number of selected variables
+  \item In total $O(d^2)$ models are trained
+\end{itemize}
+
+\textbf{Why:} It is argued that backward elimination is \textcolor{Green}{more effective in finding good variable subsets than forward selection}
+
+
+\begin{tcolorbox}[title={Backward elimination pseudo-code}]
+
+  \textbf{Input:} Training set $S = \{(x_i,y_i)\}_{i=1}^m$
+
+  \textbf{Input:} Validation set $V = \{(x_i,y_i)\}_{i=1}^n$
+
+  \textbf{Initialize:} $J \leftarrow \{1,..., d\}, s_{\max} \text{ (score)} = 0; J_{\max} = J$
+
+  \textbf{Repeat:}
+  \begin{description}
+    \item $\;\;\;$ \textbf{for $j \in J$:}
+    \begin{description}
+      \item $\;\;\;$ Train a model $f_{J \setminus j}$ with input variable excluding $j$
+      \item $\;\;\;$ $s_{J \setminus j} \leftarrow$ accuracy of the model $f_{J \setminus j}$ on the validation set
+    \end{description}
+    \item $\;\;\;$ Variable whose elimination gives the best model: $j^* \leftarrow \argmax_{j \in J} s_{J \setminus j}$
+    \item $\;\;\;$ $J \leftarrow J \setminus j^*$
+    \item $\;\;\;$ Keep track of the best model:
+    \item $\;\;\;$ \textbf{if $s_J > s_{\max}$:}
+    \begin{description}
+      \item $\;\;\;$ $s_{\max} = s_J$
+      \item $\;\;\;$ $J_{\max} = J$
+    \end{description}
+    \item $\;\;\;$ \textbf{until $J = \emptyset$}
+  \end{description}
+
+  \textbf{Output:} A subset of selected variables $J_{\max} \subset \{1,..., d\}$
+\end{tcolorbox}
+
+
+
+
+
+
+
+
+
+
+\subsubsection{Embedded methods}\label{embedded-methods}
+
+\textbf{How:} Embedded feature selection algorithms refer to cases where the learning algorithm itself is selecting features as part of searching for the best model
+
+\begin{itemize}
+  \item Models based on logical tests on single variable values e.g. decision trees
+  \item Boosting algorithms using base hypotheses on single variables
+  \item \textbf{\textcolor{blue}{Sparse modelling methods}:} focused on penalizing the weights with sparsity inducing norms
+\end{itemize}
+
+
+\subsubsubsection{Sparse modelling}\label{sparse-modelling}
+
+\textbf{What:} Roughly speaking, a vector $x$ is \textbf{sparse} if it \uline{contains many zeros}.
+
+\textbf{How:} $\ell_1$ norm $||x||_1$ promotes sparsity:
+
+\begin{figure}[H]
+  \centering  % Remember to centre the figure
+    \includegraphics[width=0.8\columnwidth]{images/l1-sparsity.png}
+    \caption{Visualizing the sparsity of L1 norm.}
+    \label{fig:l1-sparsity}
+\end{figure}
+
+
+
+\textbf{Sparsity-inducing norms: $\ell_p$}
+
+\begin{itemize}
+  \item But is some other $p$ also possible?
+  \item For general $p$, the $\ell_p$ norm is given by
+  $$
+  ||w||_p = (\sum_{j=1}^d |w_j|^p)^{1/p}
+  $$
+  \item For $p < 1$ the constraint region $||w||_p \leq 1$ becomes \textcolor{red}{non-convex} with ”spikes” extending towards the corners: will give sparsity but hard to optimize
+  \item For $p > 1$ the the constraint region is more and more ”ball-like” and ”box-like” and will give \textcolor{red}{less and less sparsity}
+  \item $p = 1$ gives the \textcolor{Green}{most sparse solutions} while keeping optimization problem \textcolor{Green}{convex}
+  \begin{figure}[H]
+    \centering  % Remember to centre the figure
+      \includegraphics[width=1.0\columnwidth]{images/p-norms.png}
+      \caption{Visualizing different norms.}
+      \label{fig:p-norms}
+  \end{figure}
+\end{itemize}
+
+
+
+\textbf{Sparse learning problems:}
+\begin{itemize}
+  \item Combining $\ell_1$ regularisation with different loss functions gives sparse variants of well-known models
+  \begin{itemize}
+    \item Squared loss $\Rightarrow$ Sparse regression, LASSO:
+    $$
+    \min_w \frac{1}{m} \sum^m_{i=1} L_{sq}(w^Tx_i, y_i) + \lambda ||w||_1
+    $$
+    \item Hinge loss $\Rightarrow$ Sparse SVM:
+    $$
+    \min_w \frac{1}{m} \sum^m_{i=1} L_{Hinge}(w^Tx_i, y_i) + \lambda ||w||_1
+    $$
+    \item Logistic loss $\Rightarrow$ Sparse logistic regression:
+    $$
+    \min_w \frac{1}{m} \sum^m_{i=1} L_{Logistic}(w^Tx_i, y_i) + \lambda ||w||_1
+    $$
+  \end{itemize}
+\end{itemize}
+
+
+
+
+\subsubsection{Stability of feature selection}\label{stability-of-feature-selection}
+
+A recognized \textcolor{red}{problem} with \uline{variable subset selection} and \uline{sparse modelling} approaches is their \textcolor{red}{sensitivity to small perturbations}
+
+\begin{itemize}
+  \item upon \uline{removal or addition of a few variables} or examples
+  \item \uline{addition of noise}
+  \item \uline{initial conditions} of the algorithms
+\end{itemize}
+
+The \textcolor{red}{lack of stability} may sometimes be a \textcolor{red}{problem}
+
+\begin{itemize}
+  \item It may be a symptom of a ”bad” model, one that will \textcolor{red}{not generalize well}
+  \item The results are \textcolor{red}{not reproducible}
+  \item One \textcolor{red}{variable subset fails to capture the ”whole picture”}
+\end{itemize}
+
+A general approach to \textcolor{Green}{tackle the lack of stability} is to use \textbf{bootstrapping}
+\begin{itemize}
+  \item One runs the variable selection or sparse modelling algorithm on $T$ sub-samples, drawn with replacement from the original training data
+  \item The \textbf{final variable subset} may be selected as
+  \begin{itemize}
+    \item The \uline{union of all selected features in the $T$ models}, or
+    \item Counting how many models include a given variable $j$ and selecting the \uline{variables that occur at least given fraction of the $T$ models}
+  \end{itemize}
+\end{itemize}
+
+
+
+
+\begin{center}\rule{3in}{0.4pt}\end{center}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\section{Multi-class Classification}\label{multi-class-classification}
+
+\textbf{What:} the problem of classifying instances into one of \uline{three or more classes}.
+
+
+\textbf{How:}
+
+\begin{itemize}
+  \item Given a training dataset $\{(x_i,y_i)\}^m_{i=1},(x_i,y_i) \in \mathcal{X} \times \mathcal{Y}$
+  \item Outputs belongs to a set of possible classes or labels: $$y_i \in \mathcal{Y} = \{1,2,...,k\}$$
+  \item We aim learning a function $f: X \to \mathcal{Y}$
+\end{itemize}
+
+\textbf{multi-class classification vs. multi-label classification:}
+\begin{itemize}
+  \item In \textbf{multi-class classification}, \textcolor{blue}{one} of the labels is considered to be the \textcolor{blue}{correct label}, the other ones incorrect
+  \item In \textbf{multi-label classification}, \textcolor{blue}{several of the labels can be correct} for a given input $x_i$, the output space will be $\mathcal{Y} = \{-1, +1\}^k$ , each output $y_i$ is a $k$-dimensional vector
+\end{itemize}
+
+
+\textbf{Two basic strategies to solve the problem:}
+
+\begin{enumerate}
+  \item \textbf{\textcolor{blue}{Aggregated methods using multiple binary classifiers}:}
+  \begin{itemize}
+    \item \textcolor{blue}{One-versus-all (OVA) approach}: Separate each class from all the others
+    \item \textcolor{blue}{One-versus-one (OVO) or all-pairs approach}: Separate each class pair from each other
+    \item \textcolor{blue}{Error-correcting output codes (ECOC) approach}: Represent each class with a binary code vector and predict the bits of the vector
+  \end{itemize}
+  \item  \textbf{\textcolor{blue}{Standalone models}: learning to predict multiple classes directly}
+  \begin{itemize}
+    \item Multiclass SVM
+    \item Multiclass Boosting
+  \end{itemize}
+\end{enumerate}
+
+
+
+
+
+
+
+
+\subsection{One-versus-All (OVA) Classification}\label{ova-classification}
+
+\textbf{Pros and cons:}
+\begin{itemize}
+  \item[\textcolor{Green}{+}] \textcolor{Green}{Simple to implement} and thus popular
+  \item[\textcolor{Green}{+}] \textcolor{Green}{Training is relatively efficient} with $O(kt)$ time where $t$ is the time to train a single binary classifier, if $k$ (\# of classes) is not too large
+  \item[\textcolor{red}{-}] May suffer from \textcolor{red}{class imbalance} of the training sets for a given class $\ell$: there may be a low number of positive examples and a high number of negative examples per class
+  \item[\textcolor{red}{-}] In general suffers from a \textcolor{red}{calibration problem}: the scores $f_{\ell}(x)$ returned by the individual classifiers may not be comparable
+  \item[\textcolor{red}{-}] \textcolor{red}{Doesn't always produce the optimal empirical error rate} for the dataset
+\end{itemize}
+
+
+\textbf{How:}
+
+\begin{itemize}
+  \item Given a training dataset $\{(x_i,y_i)\}^m_{i=1},(x_i,y_i) \in \mathcal{X} \times \mathcal{Y}$
+  \item If we have $k > 2$ classes we will train $k$ binary hypotheses $h_1, ..., h_k; \\ h_{\ell} : X \to \{+1,-1\}$
+  \item For training the $\ell$th hypothesis, new binary labels, called the \textbf{surrogate labels} are computed
+  $$
+  \tilde{y}_i^{(\ell)} =
+  \begin{cases}
+	+1, & \text{if $y_i = \ell$} \\
+  -1, & \text{if $y_i \neq \ell$}
+	\end{cases}
+  $$
+  \item A binary classifier is trained to predict the surrogate labels
+  \item The hypothesis class for the binary classifiers is not restricted: we can use any that is deemed suitable
+\end{itemize}
+
+
+\textbf{OVA prediction:}
+
+\begin{itemize}
+  \item In general, there may be more than one class $\ell$ for which $h_{\ell}(x) = +1$
+  \begin{itemize}
+    \item Some \textcolor{red}{arbitrary tie-breaking} could be used, e.g. predict the class with the smallest index $\ell$
+    \item Better results can be obtained if the hypotheses also provide some \textcolor{Green}{real-valued score $f_{\ell}(x) \in \mathbb{R}$ (confidence, margin, etc.)} for the label to be $\ell$.
+  \end{itemize}
+  \item In that case, we can choose the label with the highest score
+  $$
+  h(x) = \argmax_{\ell} f_{\ell}(x)
+  $$
+  \begin{itemize}
+    \item E.g. with linear models $h_{\ell}(x) = \text{sgn}(w_{\ell}^T x)$ using the margin of the example is a natural choice $f_{\ell}(x) = w_{\ell}^T x$
+  \end{itemize}
+\end{itemize}
+
+
+
+\begin{tcolorbox}[title={OVA training pseudo-code}]
+
+  \textbf{Input:} Training set $S = \{(x_i,y_i)\}_{i=1}^m, x_i \in X, y_i \in \mathcal{Y} = {1, ..., k}$
+
+  \textbf{for $\ell \in \{1, ..., k\}$:}
+  \begin{description}
+    \item $\;\;\;$ Generate training dataset with surrogate labels: $\{(x_i, \tilde{y}_i^{(\ell)})\}_{i=1}^m$
+    \item $\;\;\;$ Train a binary hypothesis $h_{\ell} : X \to \{-1,+1\}$
+    \item $\;\;\;$ Let $f_{\ell}(x)$ be the score for $x$ given by the model $h_{\ell}$
+  \end{description}
+  $h(x) = \argmax_{\ell} f_{\ell}(x)$
+
+  \textbf{Output:} Multiclass hypothesis $h: X \to \mathcal{Y}$
+\end{tcolorbox}
+
+
+
+
+
+
+\subsection{One-versus-One (OVO) (a.k.a all-pairs) Classification}\label{ovo-classification}
+
+
+\textbf{Pros and cons:}
+\begin{itemize}
+  \item[\textcolor{red}{-}] Compared to OVA, we are training many \textcolor{red}{more binary classifiers}: $O(k^2)$ compared to $O(k)$
+  \item[\textcolor{Green}{+}/\textcolor{red}{-}] However, the \textbf{training sets are smaller} since they only contain examples of two classes at a time:
+  \begin{itemize}
+    \item[\textcolor{Green}{+}] \textcolor{Green}{Faster to train}
+    \item[\textcolor{Green}{+}] The OVO \textcolor{Green}{training sets are less likely to be imbalanced} than in OVA
+    \item[\textcolor{red}{-}] \textcolor{red}{Increased chance of overfitting} (due to smaller training set)
+  \end{itemize}
+  \item[\textcolor{Green}{+}] \textcolor{Green}{Better theoretical justification} (compared to OVA) through the \textbf{majority voting ensemble} approach
+\end{itemize}
+
+
+
+\textbf{How:}
+
+\begin{itemize}
+  \item In OVO classification, we divide a multiclass problem into a set of $k(k - 1)/2$ binary classification problems, one for each pair of classes $(\ell,\ell'),1 \leq \ell < \ell ' \leq k$
+  \item FThis entails generating a new training set consisting of examples of the pair of classes $(\ell,\ell')$ and generating a \textbf{surrogate labels}
+  $$
+  \tilde{y}^{\ell, \ell'} =
+  \begin{cases}
+	+1, & \text{if $y = \ell$} \\
+  -1, & \text{if $y = \ell'$}
+	\end{cases}
+  $$
+  \item For each class pair, a binary hypothesis $h_{\ell,\ell'}(x) : X \to \{-1, +1\}$ is trained using the generated training set
+\end{itemize}
+
+
+
+\textbf{OVO prediction:}
+
+\begin{itemize}
+  \item In predicting, for each class $\ell$ we have $k - 1$ pairwise hypotheses, one for each class containing $\ell$ $(h_{\ell,\ell'} \text{ and } h_{\ell',\ell}, \text{ for all } \ell' \neq \ell)$
+  \item In the \textbf{ideal case}, all of the $k - 1$ hypotheses involving class $\ell$ would predict class
+  \item \textbf{In practice} this may not happen, we might have for some classes $\ell', \ell''$
+  \begin{itemize}
+    \item $h_{\ell,\ell'} = +1$, predicting class $\ell$ for $x$
+    \item $h_{\ell,\ell''} = -1$, predicting class $\ell''$ for $x$
+  \end{itemize}
+  \item We need to \uline{resolve these discrepancies}. A \textbf{voting approach} can be used:
+  \begin{itemize}
+    \item We count for each input $x$, how many pairwise hypotheses predict class $\ell$ (the votes)
+    $$
+    h(x) = \argmax_{\ell} \sum_{\ell < \ell'} 1_{\{h_{\ell\ell'}(x)=+1\}} + \sum_{\ell > \ell'} 1_{\{h_{\ell'\ell}(x)=-1\}}
+    $$
+    \item Ties can occur with several classes receiving the same number of votes, we can break them arbitrarily (e.g. predicting the smallest index $\ell$)
+  \end{itemize}
+\end{itemize}
+
+
+
+
+
+
+\subsection{Error-correcting codes (ECOC) Classification}\label{ecoc-classification}
+
+\textbf{What:} a general methods for reducing \textit{multi-class problems} \textbf{to} \uline{binary classification}
+
+\textbf{How:}
+\begin{itemize}
+  \item Each class $\ell$ is allocated a codeword $m_\ell$ of length $c > 1$. In the simplest case a binary vector can be used $m_\ell \in \{-1, +1\}^c$.
+  \item The code words of all $k$ classes together form a matrix $M \in \{-1,+1\}^{k \times c}$
+  \begin{figure}[H]
+    \centering  % Remember to centre the figure
+      \includegraphics[width=1.0\columnwidth]{images/ecoc.png}
+      \caption{Illustration of matrix $M$ in the ECOC approach.}
+      \label{fig:ecoc}
+  \end{figure}
+  \item Given the codeword matrix, a \textbf{binary classifier $f_j : X \to \{-1, +1\}$} is learned \uline{for each column $j = 1, ..., c$} of the codeword matrix
+  \item The training data for the classifier of column j is relabeled with \textbf{surrogate labels}
+  $$
+  \tilde{y}_i^{(j)} =
+  \begin{cases}
+	m_{\ell,j}, & \text{if $y_i = \ell$} \\
+  -m_{\ell,j}, & \text{if $y_i \neq \ell$}
+	\end{cases}
+  $$
+  \item The \textbf{prediction} of the ECOC model is taken as the \uline{class $\ell$ with the fewest wrongly predicted columns of the keyword}:
+  $$
+  h(x) = \argmin_{\ell = 1}^k \sum_{j=1}^c 1_{f_j(x) \neq m_{\ell j}}
+  $$
+\end{itemize}
+
+
+\textbf{How to generate the codewords?}
+
+\begin{itemize}
+  \item \textbf{Deterministic code:} decide on the length $c$ and choose binary vectors for each class so that the \uline{between class Hamming distance is as large as possible}
+  \item \textbf{Random code:} draw code words \uline{randomly}
+  \item \textbf{Use domain knowledge:} each \uline{column could be a feature describing the class}
+\end{itemize}
+
+
+\textbf{Why does ECOC work?}
+
+\begin{itemize}
+  \item The \textbf{prediction of the ECOC model} can be seen as \uline{correcting incorrectly predicted bits of the codeword}
+  \begin{itemize}
+    \item corrected codeword = the one in the codebook (matrix $M$) that has the smallest Hamming distance to the predicted codeword
+    \item If the between class Hamming distance of the codewords is at least $d$, the upto $\frac{d-1}{2}$ one bit errors can be corrected
+  \end{itemize}
+  \item Another explanation comes from \textbf{ensemble learning:} \uline{model averaging between diverse classifiers $f_j$ happens by minimizing the Hamming distance between codewords}
+\end{itemize}
+
+
+
+
+
+
+\subsection{Standalone multi-class classifiers}\label{standalone-multiclass-classifiers}
+
+\textbf{What:} Models that directly aim to minimize a multi-class loss function.
+
+\textbf{Why:} \uline{May give better predictive performance} than the approaches based on aggregating binary classifiers. Also defining a combined model \uline{may be more efficient to train}.
+
+\textbf{How:} Using models like Multiclass SVM, Multiclass boosting, Multiclass neural networks, Multiclass Decision trees and so on.
+
+
+
+\subsubsection{Multi-class SVM}\label{multiclass-SVM}
+
+
+\textbf{How:}
+
+\begin{itemize}
+  \item Multi-class SVM learns $k$ hyperplanes $f_{\ell}(x) = w_{\ell}^T x = 0$ simultaneously
+  \item The \textbf{predicted class} is the class with the \uline{highest score}
+  $$
+  h(x) = \argmax_{\ell} f_{\ell}(x)
+  $$
+  \item The \textbf{objective} is to have the score of the correct class to be higher than all the other classes by a margin (of 1)
+  $$
+  w_{y_i}^T x_i - w_{\ell}^T x_i \geq 1 - \xi_i \text{, for all } \ell \neq y_i
+  $$
+  \begin{itemize}
+    \item Above, slack $\xi_i \geq 0$ in used in the analogous way to binary SVMs to allow some examples to not to have the required margin
+  \end{itemize}
+\end{itemize}
+
+\bigskip
+
+Multi-class SVM has $k$ weight vectors $w_1 ,... , w_k$ to control
+\begin{itemize}
+  \item This is achieved by a regularizer that computes the sum of norms:
+  $$
+  \sum_{\ell=1}^k ||w||_2^2
+  $$
+  \item The regularizer is motivated by controlling the empirical Rademacher complexity $\hat{R}(H)$ of the hypothesis class $H$ of multi-class SVMs:
+  $$
+  \hat{R}(H) \leq \sqrt{\frac{r^2 \wedge^2}{m}}
+  $$
+  \begin{itemize}
+    \item Where $\sum_{\ell=1}^k ||w_\ell||_2^2 \leq \wedge^2$ and $||x_i||_2^2 \leq r^2$ for all $i=1,...,m$
+  \end{itemize}
+  \item Thus, minimizing the sum of norms aids achieving good generalization
+\end{itemize}
+
+
+We can write the Multi-class SVM as regularized loss minimization problem. The Multi-class SVM optimization problem can be written as follows:
+
+$$
+\begin{aligned}
+\min_{w,\xi} \quad & \underbrace{\frac{\delta}{2} \sum_{\ell=1}^{k} ||w_\ell||_2^2}_\text{Regularization} + \underbrace{\sum_{i=1}^m \max{\{0, 1-[w_{y_i}^T x_i - \max_{\ell \neq y_i} w_\ell^T x_i]\}}}_\text{multi-class Hinge loss}
+\end{aligned}
+$$
+
+\begin{itemize}
+  \item This problem corresponds to the QP formulation by setting $\lambda = 1/C$
+  \item The problem is \textcolor{Green}{convex} but but the loss is piecewise linear, thus \textcolor{red}{not differentiable everywhere} $\rightarrow$ A \textbf{stochastic gradient descent} algorithm can be defined through computing the subgradients of the objective function
+\end{itemize}
+
+
+
+\textbf{Multi-class SVM with kernels:}
+
+\begin{itemize}
+  \item We can perform non-linear multi-class classification by using a kernel $\kappa(x, x') = \langle\phi(x), \phi(x')\rangle$ over the data
+  \item The kernelized version of the multi-class SVM optimizes dual variables $\alpha = (\alpha_i,\ell), i = 1,...,m, \ell = 1,...,k$ (one dual variable for each training example $i$ and possible class $\ell$)
+  \item The optimization problem is given by
+  $$
+  \begin{aligned}
+  \max \quad & \sum_{i=1}^m \alpha_i,_{y_i} - \frac{1}{2} \sum_{\ell=1}^k \sum_{i,i'=1}^m \alpha_i,_\ell \alpha_{i'},_\ell \kappa(x_i, x_{i'}) \\
+  \textrm{s.t.} \quad & \sum_\ell \alpha_i,_\ell = 0 \\
+    & \alpha_i,_\ell \leq 0 \text{, for } \ell \neq y_i, 0 \leq \alpha_i,_{y_i} \leq C \\
+  \end{aligned}
+  $$
+  \item Model's prediction in dual form:
+  $$
+  \hat{y}(x) = \argmax_{\ell = 1,...,k} \sum_{i=1}^m \alpha_i,_\ell \kappa(x_i,x)
+  $$
+\end{itemize}
 
 
 
